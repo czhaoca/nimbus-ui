@@ -10,6 +10,9 @@ FROM base AS build
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+# Lint/type-check are CI-gated before publish; in-image they duplicate
+# work and OOM small runners. Heap cap + serialized static gen (CI=1).
+ENV CI=1 NIMBUS_IMAGE_BUILD=1 NODE_OPTIONS="--max-old-space-size=1536"
 RUN pnpm build
 
 FROM base AS runner

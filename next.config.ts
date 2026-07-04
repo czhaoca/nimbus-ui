@@ -8,6 +8,15 @@ const nextConfig: NextConfig = {
   // OOM-killed there (pipeline #3). One worker fits; local builds keep
   // full parallelism.
   ...(process.env.CI ? { experimental: { cpus: 1 } } : {}),
+  // Image builds skip lint + type-check: the CI pipeline gates both as
+  // dedicated steps before publish, and re-running them inside docker
+  // build OOM-kills the runner (pipeline #7). Never set outside CI images.
+  ...(process.env.NIMBUS_IMAGE_BUILD
+    ? {
+        eslint: { ignoreDuringBuilds: true },
+        typescript: { ignoreBuildErrors: true },
+      }
+    : {}),
   webpack(config) {
     config.module.rules.push({
       test: /\.svg$/,
