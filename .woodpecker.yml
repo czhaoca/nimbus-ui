@@ -27,6 +27,10 @@ steps:
 
   - name: build
     image: node:22-alpine
+    environment:
+      # Heap cap below the runner LXC's cgroup limit so Node GCs instead
+      # of ballooning into an OOM kill (pipeline #3, "Killed" at static gen).
+      NODE_OPTIONS: "--max-old-space-size=1536"
     commands:
       - corepack enable && corepack prepare pnpm@latest --activate
       - pnpm build

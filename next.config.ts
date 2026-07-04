@@ -4,6 +4,10 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   output: "standalone",
   outputFileTracingRoot: path.join(__dirname),
+  // CI runners are small LXC containers; parallel static-gen workers get
+  // OOM-killed there (pipeline #3). One worker fits; local builds keep
+  // full parallelism.
+  ...(process.env.CI ? { experimental: { cpus: 1 } } : {}),
   webpack(config) {
     config.module.rules.push({
       test: /\.svg$/,
