@@ -38,3 +38,29 @@ steps:
   # Merge-gate e2e vs the published engine image (init + seed --demo + serve)
   # is documented in design/shared/dev-db-bootstrap.md of the backend repo;
   # enable once the ghcr pull secret is staged for this repo.
+
+  # Publish ghcr.io/czhaoca/nimbus-ui on main pushes (#252): the backend
+  # repo's workstation compose pulls this image by tag; governed registry
+  # slots pin api+ui tags together. Secret ghcr_token is repo-staged,
+  # push-event + buildx-image filtered.
+  - name: prepare-tags
+    image: alpine:3
+    commands:
+      - printf 'latest\n%s\n' "$(echo "$CI_COMMIT_SHA" | cut -c1-7)" > .tags
+    when:
+      event: push
+
+  - name: publish-image
+    image: woodpeckerci/plugin-docker-buildx
+    settings:
+      registry: ghcr.io
+      repo: ghcr.io/czhaoca/nimbus-ui
+      dockerfile: Dockerfile
+      context: .
+      tags_file: .tags
+      username: czhaoca
+      password:
+        from_secret: ghcr_token
+      platforms: linux/amd64
+    when:
+      event: push
