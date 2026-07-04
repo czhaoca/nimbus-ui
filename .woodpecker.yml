@@ -1,6 +1,8 @@
 # nimbus-ui CI — contract typecheck + lint + build (repo-decouple #250)
+# cron = nightly contract revalidation; manual = the backend's
+# contract-change API trigger (#253). Publish steps stay push-only.
 when:
-  event: [push, pull_request]
+  event: [push, pull_request, cron, manual]
   branch: main
 
 steps:
