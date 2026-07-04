@@ -1,0 +1,36 @@
+# nimbus-ui CI — contract typecheck + lint + build (repo-decouple #250)
+when:
+  event: [push, pull_request]
+  branch: main
+
+steps:
+  - name: install
+    image: node:22-alpine
+    commands:
+      - corepack enable && corepack prepare pnpm@latest --activate
+      - pnpm install --frozen-lockfile
+
+  # Consumer contract gate (ADR-0008 §5): the vendored schema is the pinned
+  # contract; the compile is the contract test. Bumps arrive as backend-CI
+  # bot commits updating src/lib/api/schema.d.ts + the version stamp.
+  - name: contract-typecheck
+    image: node:22-alpine
+    commands:
+      - corepack enable && corepack prepare pnpm@latest --activate
+      - pnpm typecheck
+
+  - name: lint
+    image: node:22-alpine
+    commands:
+      - corepack enable && corepack prepare pnpm@latest --activate
+      - pnpm lint
+
+  - name: build
+    image: node:22-alpine
+    commands:
+      - corepack enable && corepack prepare pnpm@latest --activate
+      - pnpm build
+
+  # Merge-gate e2e vs the published engine image (init + seed --demo + serve)
+  # is documented in design/shared/dev-db-bootstrap.md of the backend repo;
+  # enable once the ghcr pull secret is staged for this repo.

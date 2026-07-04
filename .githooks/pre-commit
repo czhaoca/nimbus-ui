@@ -1,0 +1,115 @@
+#!/usr/bin/env bash
+# repo-privacy-kit pre-commit hook (generic; per-repo values in allowlist.conf)
+# Scans staged files for secrets/private bindings and runs linting.
+# Installed by repo-privacy-kit install.sh (git config core.hooksPath .githooks)
+set -euo pipefail
+
+echo "Running repo-privacy-kit pre-commit checks..."
+
+# Per-repo configuration (all optional; see allowlist.conf.example)
+EXTRA_SECRET_ALLOWLIST=""
+SECRET_SCAN_SKIP_GLOBS=""
+BINDING_PATH_ALLOWLIST='^$'
+EXTRA_BINDING_LINE_ALLOWLIST=""
+LINT_PY=1
+CONF="$(dirname "$0")/allowlist.conf"
+[ -f "$CONF" ] && . "$CONF"
+
+# --- 1. Secret pattern scan ---
+STAGED=$(git diff --cached --name-only --diff-filter=ACM)
+if [ -z "$STAGED" ]; then
+  echo "No staged files. Skipping checks."
+  exit 0
+fi
+
+SECRET_PATTERNS='BEGIN (RSA|PRIVATE|EC|OPENSSH) KEY|password\s*=\s*\S+|token\s*=\s*\S+|secret\s*=\s*\S+|api[_-]?key\s*=\s*\S+|ocid1\.[a-z]+\.oc1\.|AKIA[A-Z0-9]{16}|ghp_[A-Za-z0-9]{36}|sk-[A-Za-z0-9]{48}'
+ALLOWLIST_PATTERNS='changeme|REPLACE_WITH_|YOUR_[A-Z_]+|your-[a-z-]+|example\.com|ocid1\.[a-z]+\.oc1\.\.(test|example|[A-Z_]+)|token-here|<.*>|\{\{.*\}\}|\.\.\.|credentials_path|secret pattern|grep\s+-[EqPw]|HAS_\w+=|=\s*[01]\s*$'
+if [ -n "$EXTRA_SECRET_ALLOWLIST" ]; then
+  ALLOWLIST_PATTERNS="$ALLOWLIST_PATTERNS|$EXTRA_SECRET_ALLOWLIST"
+fi
+
+_skip_glob() { # $1 = staged path; returns 0 when a skip glob matches
+  for g in $SECRET_SCAN_SKIP_GLOBS; do
+    case "$1" in $g) return 0;; esac
+  done
+  return 1
+}
+
+SECRETS_FOUND=0
+for f in $STAGED; do
+  # Scan docs and templates too; test fixtures + conf-declared generated
+  # paths/lockfiles are excluded from the SECRET scan only. Only the hook
+  # file ITSELF is scanner-exempt (it defines the patterns); allowlist.conf
+  # stays scanned so a real value pasted there is still caught.
+  if [ -f "$f" ] && [[ "$f" != */tests/* && "$f" != ".githooks/pre-commit" ]] && ! _skip_glob "$f"; then
+    # Filter out false positives: instance vars (self._), config reads, placeholders
+    MATCHES=$(grep -nEi "$SECRET_PATTERNS" "$f" 2>/dev/null | grep -vE 'self\._\w+|config\[|read_text|xxxxxxxx|\.strip\(\)|\.get\(|\.getItem\(|\$\{[A-Z_]+[\}:]|==\s*"|openssl rand|settings\.\w+|\.\w*(password|token|secret)\s*=\s*\w+$|=\s*(True|False|None)\b|create_access_token|bcrypt\.hashpw|getattr\(|hashed_password|access_token=\w+|password="changeme"|\w+=\$\(|_password\b|_token=\w+,|="\$[A-Z_]+|f"PVE|{token_' | grep -vE "$ALLOWLIST_PATTERNS" || true)
+    if [ -n "$MATCHES" ]; then
+      echo "ERROR: Potential secrets in $f:"
+      echo "$MATCHES" | head -5
+      SECRETS_FOUND=1
+    fi
+  fi
+done
+
+if [ "$SECRETS_FOUND" -eq 1 ]; then
+  echo ""
+  echo "COMMIT BLOCKED: Remove secrets before committing."
+  echo "Use env vars or Infisical for runtime credentials. Keep local/ gitignored if you need a compatibility override."
+  exit 1
+fi
+
+# --- 2. Private infrastructure binding scan ---
+PRIVATE_BINDING_PATTERNS='(10|192\.168)\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}(/[0-9]{1,2})?|172\.(1[6-9]|2[0-9]|3[01])\.[0-9]{1,3}\.[0-9]{1,3}(/[0-9]{1,2})?|(^|[^A-Za-z0-9_])(VMID|vmid)[[:space:]:=]+[0-9]{2,}|(^|[^A-Za-z0-9.-])[A-Za-z0-9.-]+\.(local|lan|internal)([^A-Za-z0-9.-]|$)|(^|[^0-9])6[0-9]{4}-6[0-9]{4}([^0-9]|$)'
+PRIVATE_BINDING_PATH_ALLOWLIST="$BINDING_PATH_ALLOWLIST"
+PRIVATE_BINDING_LINE_ALLOWLIST='private binding|PRIVATE_BINDING|localhost|127\.0\.0\.1|0\.0\.0\.0|example\.com|your-|<.*>|\{\{.*\}\}|\.local_[A-Za-z0-9_]+|self\.local_|e\.g\.|jail\.local'
+if [ -n "$EXTRA_BINDING_LINE_ALLOWLIST" ]; then
+  PRIVATE_BINDING_LINE_ALLOWLIST="$PRIVATE_BINDING_LINE_ALLOWLIST|$EXTRA_BINDING_LINE_ALLOWLIST"
+fi
+
+BINDINGS_FOUND=0
+for f in $STAGED; do
+  if [ -f "$f" ] && [[ "$f" != */tests/* ]]; then
+    if echo "$f" | grep -Eq "$PRIVATE_BINDING_PATH_ALLOWLIST"; then
+      continue
+    fi
+    MATCHES=$(grep -nE "$PRIVATE_BINDING_PATTERNS" "$f" 2>/dev/null | grep -vE "$PRIVATE_BINDING_LINE_ALLOWLIST" || true)
+    if [ -n "$MATCHES" ]; then
+      echo "ERROR: Potential private infrastructure bindings in $f:"
+      echo "$MATCHES" | head -5
+      BINDINGS_FOUND=1
+    fi
+  fi
+done
+
+if [ "$BINDINGS_FOUND" -eq 1 ]; then
+  echo ""
+  echo "COMMIT BLOCKED: Remove live target IDs, private IPs/CIDRs, hostnames, or governed port bindings."
+  echo "Use placeholders, registry lookups, or an explicit documented allowlist."
+  exit 1
+fi
+
+# --- 3. Check no local/ files staged ---
+LOCAL_FILES=$(echo "$STAGED" | grep -E '(^|/)local/' || true)
+if [ -n "$LOCAL_FILES" ]; then
+  echo "ERROR: local/ files staged for commit:"
+  echo "$LOCAL_FILES"
+  echo ""
+  echo "COMMIT BLOCKED: Unstage with: git reset HEAD <file>"
+  exit 1
+fi
+
+# --- 4. Ruff lint on staged Python files ---
+PY_FILES=$(echo "$STAGED" | grep '\.py$' || true)
+if [ "$LINT_PY" = "1" ] && [ -n "$PY_FILES" ] && command -v ruff &>/dev/null; then
+  echo "Running ruff on staged Python files..."
+  if ! echo "$PY_FILES" | xargs ruff check --quiet 2>/dev/null; then
+    echo ""
+    echo "COMMIT BLOCKED: Ruff found lint errors."
+    echo "Fix with: ruff check --fix <file>"
+    exit 1
+  fi
+fi
+
+echo "repo-privacy-kit pre-commit checks passed."
+exit 0
