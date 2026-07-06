@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { Layers } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { useProviders } from "@/lib/hooks/useApi";
-import { apiFetch } from "@/lib/api/client";
+import { getProviderQuota } from "@/lib/api/client";
 import type { Provider } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -20,6 +20,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+// Derived from /api/v1/providers/{id}/quota (resource count + budget
+// utilization). Per-resource-type quota limits are not exposed by the
+// /api/v1 contract; only budget-backed quotas render as cards.
 interface Quota {
   provider_id: string;
   resource_type: string;
@@ -36,11 +39,33 @@ export default function QuotasPage() {
   const [selectedProvider, setSelectedProvider] = useState<string>("all");
 
   useEffect(() => {
-    apiFetch<Quota[]>("/api/quotas")
-      .then(setQuotas)
+    if (!providers) return;
+    // The contract exposes quota per provider; fan out one call per
+    // provider and keep the budget-backed entries.
+    Promise.all(
+      providers.map((p: Provider) =>
+        getProviderQuota(p.id).catch(() => null),
+      ),
+    )
+      .then((results) => {
+        const entries: Quota[] = [];
+        for (const q of results) {
+          if (!q) continue;
+          if (q.budget.monthly_limit !== null) {
+            entries.push({
+              provider_id: q.provider_id,
+              resource_type: "Monthly budget",
+              limit: q.budget.monthly_limit,
+              used: q.budget.current_spend,
+              unit: "USD",
+            });
+          }
+        }
+        setQuotas(entries);
+      })
       .catch((e) => setError((e as Error).message))
       .finally(() => setLoading(false));
-  }, []);
+  }, [providers]);
 
   const providerName = (id: string) => {
     const p = providers?.find((pr: Provider) => pr.id === id);
@@ -168,6 +193,10 @@ export default function QuotasPage() {
         <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
           <Layers size={32} className="mb-2 opacity-40" />
           <p className="text-sm">No quota data available{selectedProvider !== "all" && " for this provider"}.</p>
+          <p className="text-xs mt-1">
+            Quota cards derive from provider budget rules; per-resource-type
+            limits are not exposed by the /api/v1 contract.
+          </p>
         </div>
       )}
     </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { apiFetch } from "@/lib/api/client";
+import { getSystemInfo } from "@/lib/api/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -51,7 +51,7 @@ export default function SystemPage() {
     setLoading(true);
     setError(null);
     try {
-      const data = await apiFetch<SystemInfo>("/api/system/info");
+      const data = await getSystemInfo<SystemInfo>();
       setInfo(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load system info");

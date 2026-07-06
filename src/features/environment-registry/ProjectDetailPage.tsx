@@ -86,7 +86,7 @@ export function ProjectDetailPage({ projectName }: Props) {
                   <div className="flex gap-2">
                     <Button variant="outline" size="sm" asChild>
                       <a
-                        href={`/api/projects/${projectName}/docker-compose?env=${slot.env_type}`}
+                        href={`/api/v1/projects/${projectName}/docker-compose?env=${slot.env_type}`}
                         download={`docker-compose.${slot.env_type}.yml`}
                       >
                         <Download className="size-4 mr-1" />

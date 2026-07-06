@@ -1,11 +1,9 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { Activity, Filter, AlertCircle } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
-import Link from "next/link";
-import { apiFetch } from "@/lib/api/client";
-import type { ActionLogEntry } from "@/lib/types";
+import { getActivityFeed, type ActivityItem } from "@/lib/api/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -19,39 +17,29 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
 
-const ACTION_VARIANTS: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
-  start: "default",
-  stop: "secondary",
-  terminate: "destructive",
-  health_check: "outline",
-  sync: "secondary",
-  create: "default",
-  delete: "destructive",
-  update: "secondary",
+const SOURCE_VARIANTS: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
+  audit: "default",
+  webhook: "secondary",
 };
 
+const SOURCE_FILTERS = ["all", "audit", "webhook"] as const;
+
 export default function ActivityPage() {
-  const [actions, setActions] = useState<ActionLogEntry[]>([]);
+  const [items, setItems] = useState<ActivityItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [filterType, setFilterType] = useState<string>("all");
+  const [filterSource, setFilterSource] = useState<string>("all");
 
   useEffect(() => {
-    apiFetch<ActionLogEntry[]>("/api/actions")
-      .then(setActions)
+    setLoading(true);
+    // /api/v1/activity merges audit-log and webhook events into one feed.
+    getActivityFeed(
+      filterSource === "all" ? {} : { source: filterSource as "audit" | "webhook" },
+    )
+      .then(setItems)
       .catch((e) => setError((e as Error).message))
       .finally(() => setLoading(false));
-  }, []);
-
-  const actionTypes = useMemo(() => {
-    const types = new Set(actions.map((a) => a.action_type));
-    return ["all", ...Array.from(types).sort()];
-  }, [actions]);
-
-  const filteredActions = useMemo(() => {
-    if (filterType === "all") return actions;
-    return actions.filter((a) => a.action_type === filterType);
-  }, [actions, filterType]);
+  }, [filterSource]);
 
   const formatDate = (dateStr: string | null) => {
     if (!dateStr) return "--";
@@ -88,14 +76,14 @@ export default function ActivityPage() {
         action={
           <div className="flex items-center gap-2">
             <Filter size={14} className="text-muted-foreground" />
-            <Select value={filterType} onValueChange={setFilterType}>
+            <Select value={filterSource} onValueChange={setFilterSource}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {actionTypes.map((t) => (
+                {SOURCE_FILTERS.map((t) => (
                   <SelectItem key={t} value={t}>
-                    {t === "all" ? "All Actions" : t}
+                    {t === "all" ? "All Sources" : t}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -105,12 +93,12 @@ export default function ActivityPage() {
       />
 
       <p className="text-sm text-muted-foreground">
-        {filteredActions.length} action{filteredActions.length !== 1 && "s"}
+        {items.length} event{items.length !== 1 && "s"}
       </p>
 
       {/* Timeline */}
       <div className="relative">
-        {filteredActions.length === 0 ? (
+        {items.length === 0 ? (
           <p className="text-sm text-muted-foreground text-center py-12">
             No activity recorded yet.
           </p>
@@ -121,56 +109,38 @@ export default function ActivityPage() {
               className="absolute left-4 top-0 bottom-0 h-full"
             />
 
-            {filteredActions.map((action, i) => {
-              const variant =
-                ACTION_VARIANTS[action.action_type] ?? "outline";
+            {items.map((item, i) => (
+              <div key={item.id || i} className="relative pl-10 pb-4">
+                {/* Dot */}
+                <div className="absolute left-2.5 top-2 w-3 h-3 rounded-full bg-border" />
 
-              return (
-                <div key={action.id || i} className="relative pl-10 pb-4">
-                  {/* Dot */}
-                  <div className="absolute left-2.5 top-2 w-3 h-3 rounded-full bg-border" />
+                <Card className="py-4">
+                  <CardContent className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Badge variant={SOURCE_VARIANTS[item.source] ?? "outline"}>
+                        {item.source}
+                      </Badge>
+                      <span className="text-xs text-muted-foreground">
+                        {formatDate(item.timestamp)}
+                      </span>
+                    </div>
 
-                  <Card className="py-4">
-                    <CardContent className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <Badge variant={variant}>
-                          {action.action_type}
-                        </Badge>
-                        <span className="text-xs text-muted-foreground">
-                          {formatDate(action.created_at)}
-                        </span>
-                      </div>
+                    <p className="text-sm">{item.summary}</p>
 
-                      <div className="text-xs text-muted-foreground space-y-0.5">
-                        {action.resource_id && (
-                          <p>
-                            Resource:{" "}
-                            <Link
-                              href={`/resources/${action.resource_id}`}
-                              className="text-primary hover:underline"
-                            >
-                              {action.resource_id}
-                            </Link>
-                          </p>
-                        )}
-                        <p>Status: {action.status}</p>
-                        <p>By: {action.initiated_by}</p>
-                        {Object.keys(action.details).length > 0 && (
-                          <details className="mt-1">
-                            <summary className="cursor-pointer hover:text-foreground">
-                              Details
-                            </summary>
-                            <pre className="mt-1 text-xs bg-muted rounded p-2 overflow-x-auto">
-                              {JSON.stringify(action.details, null, 2)}
-                            </pre>
-                          </details>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-              );
-            })}
+                    {Object.keys(item.details).length > 0 && (
+                      <details className="mt-1 text-xs text-muted-foreground">
+                        <summary className="cursor-pointer hover:text-foreground">
+                          Details
+                        </summary>
+                        <pre className="mt-1 text-xs bg-muted rounded p-2 overflow-x-auto">
+                          {JSON.stringify(item.details, null, 2)}
+                        </pre>
+                      </details>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            ))}
           </>
         )}
       </div>

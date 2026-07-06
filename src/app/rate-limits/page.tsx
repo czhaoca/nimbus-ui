@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { Gauge, Save } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
-import { apiFetch } from "@/lib/api/client";
+import { getRateLimits, saveRateLimits } from "@/lib/api/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -35,7 +35,7 @@ export default function RateLimitsPage() {
   const [success, setSuccess] = useState(false);
 
   useEffect(() => {
-    apiFetch<RateLimitConfig>("/api/settings/rate-limits")
+    getRateLimits()
       .then(setConfig)
       .catch((e) => setError((e as Error).message))
       .finally(() => setLoading(false));
@@ -46,10 +46,8 @@ export default function RateLimitsPage() {
     setError(null);
     setSuccess(false);
     try {
-      await apiFetch("/api/settings/rate-limits", {
-        method: "PUT",
-        body: JSON.stringify(config),
-      });
+      // The contract exposes POST (not PUT) for rate-limit updates.
+      await saveRateLimits(config);
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
     } catch (e) {

@@ -3,31 +3,13 @@
 import { useProviders } from "@/lib/hooks/useApi";
 import type { Provider } from "@/lib/types";
 import { useState, useEffect } from "react";
-import { apiFetch } from "@/lib/api/client";
+import { checkProviderHealth, type ProviderHealthResult } from "@/lib/api/client";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
-
-/* ---------- Types ---------- */
-
-interface HealthProbe {
-  probe_type: string;
-  status: "ok" | "degraded" | "down" | "unknown";
-  latency_ms: number;
-  message: string;
-  checked_at: string;
-}
-
-interface ProviderHealth {
-  provider_id: string;
-  status: "connected" | "degraded" | "down" | "unknown";
-  latency_ms: number;
-  probes: HealthProbe[];
-  last_check: string;
-}
 
 /* ---------- Status helpers ---------- */
 
@@ -55,13 +37,6 @@ const STATUS_LABEL: Record<string, string> = {
   unknown: "Unknown",
 };
 
-const PROBE_BADGE_VARIANT: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
-  ok: "default",
-  degraded: "secondary",
-  down: "destructive",
-  unknown: "outline",
-};
-
 /* ---------- ProviderHealthCard sub-component ---------- */
 
 function ProviderHealthCard({
@@ -69,7 +44,7 @@ function ProviderHealthCard({
   health,
 }: {
   provider: Provider;
-  health: ProviderHealth | undefined;
+  health: ProviderHealthResult | undefined;
 }) {
   const status = health?.status ?? "unknown";
 
@@ -91,51 +66,32 @@ function ProviderHealthCard({
       </CardHeader>
 
       <CardContent className="space-y-3">
-        {/* Latency */}
+        {/* Latency — per-probe breakdown is not exposed by /api/v1
+            (providers/health/check returns one probe per provider). */}
         {health && (
           <div>
-            <p className="text-sm text-muted-foreground">
-              Latency:{" "}
-              <span
-                className={
-                  health.latency_ms < 200
-                    ? "text-emerald-400"
-                    : health.latency_ms < 1000
-                      ? "text-amber-400"
-                      : "text-red-400"
-                }
-              >
-                {health.latency_ms}ms
-              </span>
-            </p>
+            {health.latency_ms !== null && (
+              <p className="text-sm text-muted-foreground">
+                Latency:{" "}
+                <span
+                  className={
+                    health.latency_ms < 200
+                      ? "text-emerald-400"
+                      : health.latency_ms < 1000
+                        ? "text-amber-400"
+                        : "text-red-400"
+                  }
+                >
+                  {health.latency_ms}ms
+                </span>
+              </p>
+            )}
             <p className="text-xs text-muted-foreground">
-              Last check: {new Date(health.last_check).toLocaleString()}
+              Last check: {new Date(health.checked_at).toLocaleString()}
             </p>
-          </div>
-        )}
-
-        {/* Probes */}
-        {health && health.probes.length > 0 && (
-          <div>
-            <p className="text-xs text-muted-foreground mb-2 font-medium uppercase tracking-wide">
-              Probes
-            </p>
-            <div className="space-y-1.5">
-              {health.probes.map((probe, i) => (
-                <div key={i} className="flex items-center justify-between text-sm">
-                  <div className="flex items-center gap-2">
-                    <span className={`inline-block w-2 h-2 rounded-full ${STATUS_DOT[probe.status]}`} />
-                    <span>{probe.probe_type}</span>
-                  </div>
-                  <div className="flex items-center gap-3 text-xs">
-                    <span className="text-muted-foreground">{probe.latency_ms}ms</span>
-                    <Badge variant={PROBE_BADGE_VARIANT[probe.status] ?? "outline"}>
-                      {probe.status}
-                    </Badge>
-                  </div>
-                </div>
-              ))}
-            </div>
+            {health.error && (
+              <p className="text-xs text-red-400 mt-1">{health.error}</p>
+            )}
           </div>
         )}
 
@@ -152,7 +108,7 @@ function ProviderHealthCard({
 
 export default function HealthPage() {
   const { data: providers, isLoading: providersLoading, error: providersError } = useProviders();
-  const [healthMap, setHealthMap] = useState<Record<string, ProviderHealth>>({});
+  const [healthMap, setHealthMap] = useState<Record<string, ProviderHealthResult>>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -163,10 +119,10 @@ export default function HealthPage() {
     setLoading(true);
     setError(null);
 
-    apiFetch<ProviderHealth[]>("/api/providers/health")
+    checkProviderHealth()
       .then((data) => {
         if (cancelled) return;
-        const map: Record<string, ProviderHealth> = {};
+        const map: Record<string, ProviderHealthResult> = {};
         for (const h of data) {
           map[h.provider_id] = h;
         }

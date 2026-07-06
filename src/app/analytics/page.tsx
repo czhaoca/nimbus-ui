@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import { BarChart3 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { AlertCircle } from "lucide-react";
-import { apiFetch } from "@/lib/api/client";
+import { listProviders, listResources } from "@/lib/api/client";
 import type { Provider, Resource } from "@/lib/types";
 import {
   Card,
@@ -32,8 +32,8 @@ export default function AnalyticsPage() {
 
   useEffect(() => {
     Promise.all([
-      apiFetch<Provider[]>("/api/providers"),
-      apiFetch<Resource[]>("/api/resources"),
+      listProviders(),
+      listResources(),
     ])
       .then(([p, r]) => {
         setProviders(p);

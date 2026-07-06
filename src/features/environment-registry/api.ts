@@ -1,4 +1,4 @@
-import { apiFetch } from "@/lib/api/client";
+import { api, unwrap } from "@/lib/api/client";
 
 import type {
   CidrAllocation,
@@ -11,34 +11,44 @@ import type {
 } from "./types";
 
 export const fetchRegistrySlots = () =>
-  apiFetch<RegistrySlot[]>("/api/access-registry");
+  unwrap<RegistrySlot[]>(api.GET("/api/v1/access-registry"));
 
 export const fetchRegistryTargets = () =>
-  apiFetch<RegistryTarget[]>("/api/targets");
+  unwrap<RegistryTarget[]>(api.GET("/api/v1/targets"));
 
 export const fetchRegistryPortPools = () =>
-  apiFetch<RegistryPortPool[]>("/api/port-pools");
+  unwrap<RegistryPortPool[]>(api.GET("/api/v1/port-pools"));
 
 export const fetchRegistryProjects = () =>
-  apiFetch<RegistryProject[]>("/api/projects");
+  unwrap<RegistryProject[]>(api.GET("/api/v1/projects"));
 
 export const fetchCidrAllocations = () =>
-  apiFetch<CidrAllocation[]>("/api/cidr-allocations");
+  unwrap<CidrAllocation[]>(api.GET("/api/v1/cidr-allocations"));
 
 export const fetchProjectCompose = (project: string, env: string, template = false) =>
-  apiFetch<string>(`/api/projects/${project}/docker-compose?env=${env}&template=${template}`);
+  unwrap<string>(
+    api.GET("/api/v1/projects/{project_name}/docker-compose", {
+      params: { path: { project_name: project }, query: { env, template } },
+    }),
+  );
 
 export const validateDeployment = (project: string, env: string) =>
-  apiFetch<ValidationResult>(`/api/deploy/validate?project_name=${project}&env_type=${env}`, {
-    method: "POST",
-  });
+  unwrap<ValidationResult>(
+    api.POST("/api/v1/deploy/validate", {
+      params: { query: { project_name: project, env_type: env } },
+    }),
+  );
 
 export const triggerHealthCheck = (slotId: string) =>
-  apiFetch<HealthCheckResult>(`/api/slots/${slotId}/health-check`, {
-    method: "POST",
-  });
+  unwrap<HealthCheckResult>(
+    api.POST("/api/v1/slots/{slot_id}/health-check", {
+      params: { path: { slot_id: slotId } },
+    }),
+  );
 
 export const syncProxmoxTargets = (providerId: string) =>
-  apiFetch<RegistryTarget[]>(`/api/targets/sync/proxmox/${providerId}`, {
-    method: "POST",
-  });
+  unwrap<RegistryTarget[]>(
+    api.POST("/api/v1/targets/sync/proxmox/{provider_id}", {
+      params: { path: { provider_id: providerId } },
+    }),
+  );

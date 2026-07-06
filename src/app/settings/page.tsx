@@ -115,6 +115,8 @@ export default function SettingsPage() {
   };
 
   const saveAlertConfig = () => {
+    // The contract PUT replaces the whole config; carry the channels this
+    // form doesn't edit forward from the loaded config so they survive.
     const config: AlertConfigData = {
       smtp_host: smtpHost,
       smtp_port: parseInt(smtpPort, 10) || 587,
@@ -127,6 +129,14 @@ export default function SettingsPage() {
         .split("\n")
         .map((s) => s.trim())
         .filter(Boolean),
+      slack_webhooks: alertConfig?.slack_webhooks ?? [],
+      discord_webhooks: alertConfig?.discord_webhooks ?? [],
+      enabled_channels: alertConfig?.enabled_channels ?? [
+        "webhook",
+        "slack",
+        "discord",
+        "email",
+      ],
     };
     updateAlertMut.mutate(config);
   };

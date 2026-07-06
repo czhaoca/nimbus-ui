@@ -7,7 +7,7 @@ import {
   Plus, Monitor, Network, Shield, HardDrive, Tag, Tags, DollarSign,
   BarChart3, TrendingUp, Timer, GitBranch, Webhook, ScrollText,
   AlertTriangle, Activity, Users, Settings, Search, ChevronRight,
-  BookOpen, Code2, ExternalLink, Globe,
+  BookOpen, ExternalLink, Globe,
 } from "lucide-react";
 import {
   Sidebar as ShadcnSidebar,
@@ -205,15 +205,9 @@ export function AppSidebar() {
               </a>
             </SidebarMenuButton>
           </SidebarMenuItem>
-          <SidebarMenuItem>
-            <SidebarMenuButton asChild size="sm" tooltip="API Reference">
-              <a href="/api/docs" target="_blank" rel="noopener noreferrer">
-                <Code2 className="size-4" />
-                <span>API</span>
-                <ExternalLink className="ml-auto size-3 text-muted-foreground" />
-              </a>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
+          {/* API-reference link removed: the engine serves docs at its root
+              /docs, which the UI proxy does not expose; the old /api/docs
+              target 404s. Restore once a proxied docs route exists. */}
         </SidebarMenu>
       </SidebarFooter>
     </ShadcnSidebar>

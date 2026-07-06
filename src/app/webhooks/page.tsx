@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { type ColumnDef } from "@tanstack/react-table";
 import { Webhook } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
+import { listWebhookEvents } from "@/lib/api/client";
 import { DataTable } from "@/components/DataTable";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -104,19 +105,14 @@ export default function WebhooksPage() {
     setLoading(true);
     setError(null);
     try {
-      const params = new URLSearchParams({
-        page: String(page),
-        page_size: String(PAGE_SIZE),
+      // Contract paginates with per_page (the old page_size param was
+      // silently ignored by the engine).
+      const data = await listWebhookEvents<EventsResponse>({
+        page,
+        per_page: PAGE_SIZE,
+        ...(direction !== "all" ? { direction } : {}),
+        ...(channel.trim() ? { channel: channel.trim() } : {}),
       });
-      if (direction !== "all") params.set("direction", direction);
-      if (channel.trim()) params.set("channel", channel.trim());
-
-      const res = await fetch(`/api/webhooks/events?${params}`);
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error((body as { detail?: string }).detail ?? `HTTP ${res.status}`);
-      }
-      const data: EventsResponse = await res.json();
       setEvents(data.events);
       setTotal(data.total);
     } catch (err) {

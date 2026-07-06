@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import { Tag, Filter } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import Link from "next/link";
-import { apiFetch } from "@/lib/api/client";
+import { listResources } from "@/lib/api/client";
 import type { Resource } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -21,7 +21,7 @@ export default function TagsPage() {
   const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
-    apiFetch<Resource[]>("/api/resources")
+    listResources()
       .then(setResources)
       .catch((e) => setError((e as Error).message))
       .finally(() => setLoading(false));

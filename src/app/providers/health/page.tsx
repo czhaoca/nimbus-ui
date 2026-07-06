@@ -5,7 +5,7 @@ import Link from "next/link";
 import { RefreshCw, Plus } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { useProviders } from "@/lib/hooks/useApi";
-import { apiFetch } from "@/lib/api/client";
+import { checkProviderHealth } from "@/lib/api/client";
 import type { Provider } from "@/lib/types";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -35,9 +35,12 @@ export default function ProviderHealthPage() {
   const checkHealth = async (provider: Provider) => {
     setChecking((prev) => new Set(prev).add(provider.id));
     try {
-      const result = await apiFetch<HealthResult>(
-        `/api/providers/${provider.id}/health`,
-      );
+      // Contract exposes a scoped probe via /providers/health/check?provider_id=.
+      const results = await checkProviderHealth(provider.id);
+      const r = results[0];
+      const result: HealthResult = r
+        ? { provider_id: r.provider_id, status: r.status, message: r.error ?? undefined }
+        : { provider_id: provider.id, status: "unknown", message: "No health data returned" };
       setHealthMap((prev) => ({ ...prev, [provider.id]: result }));
     } catch (e) {
       setHealthMap((prev) => ({

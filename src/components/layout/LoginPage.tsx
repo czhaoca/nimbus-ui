@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { login } from "@/lib/api/client";
 
 interface Props {
   onLogin: (token: string, user: { username: string; role: string }) => void;
@@ -24,20 +25,10 @@ export function LoginPage({ onLogin }: Props) {
     setError("");
 
     try {
-      const resp = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password }),
-      });
-      if (!resp.ok) {
-        const body = await resp.json().catch(() => ({}));
-        setError((body as { detail?: string }).detail ?? "Login failed");
-        return;
-      }
-      const data = (await resp.json()) as { access_token: string; username: string; role: string };
+      const data = await login(username, password);
       onLogin(data.access_token, { username: data.username, role: data.role });
-    } catch {
-      setError("Cannot reach engine");
+    } catch (e) {
+      setError(e instanceof Error && e.message !== "Failed to fetch" ? e.message : "Cannot reach engine");
     } finally {
       setLoading(false);
     }

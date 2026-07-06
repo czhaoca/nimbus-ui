@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { GitBranch, ArrowRight, ArrowLeft } from "lucide-react";
-import { apiFetch } from "@/lib/api/client";
+import { getResource, getResourceDependencies, listResources } from "@/lib/api/client";
 import type { Resource } from "@/lib/types";
 import { PageHeader } from "@/components/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
@@ -12,13 +12,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-
-interface Dependency {
-  id: string;
-  resource_id: string;
-  depends_on_id: string;
-  relationship_type: string;
-}
 
 const STATUS_VARIANT: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
   running: "default",
@@ -41,28 +34,25 @@ export default function DependencyGraphPage() {
     const load = async () => {
       try {
         const [res, deps] = await Promise.all([
-          apiFetch<Resource>(`/api/resources/${resourceId}`),
-          apiFetch<Dependency[]>(`/api/resources/${resourceId}/dependencies`),
+          getResource(resourceId),
+          getResourceDependencies(resourceId),
         ]);
         setResource(res);
 
-        const allResources = await apiFetch<Resource[]>("/api/resources");
+        const allResources = await listResources();
         const resourceMap = new Map(allResources.map((r) => [r.id, r]));
 
-        const up: Resource[] = [];
-        const down: Resource[] = [];
-        deps.forEach((d) => {
-          if (d.resource_id === resourceId) {
-            const dep = resourceMap.get(d.depends_on_id);
-            if (dep) up.push(dep);
-          }
-          if (d.depends_on_id === resourceId) {
-            const dep = resourceMap.get(d.resource_id);
-            if (dep) down.push(dep);
-          }
-        });
-        setUpstream(up);
-        setDownstream(down);
+        // Contract returns both directions pre-partitioned.
+        setUpstream(
+          deps.depends_on
+            .map((d) => resourceMap.get(d.target_id))
+            .filter((r): r is Resource => Boolean(r)),
+        );
+        setDownstream(
+          deps.depended_by
+            .map((d) => resourceMap.get(d.source_id))
+            .filter((r): r is Resource => Boolean(r)),
+        );
       } catch (e) {
         setError((e as Error).message);
       } finally {

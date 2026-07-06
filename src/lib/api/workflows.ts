@@ -1,22 +1,4 @@
-const BASE = "/api";
-
-function headers(): Record<string, string> {
-  const h: Record<string, string> = { "Content-Type": "application/json" };
-  if (typeof window !== "undefined") {
-    const token = sessionStorage.getItem("nimbus_token");
-    if (token) h["Authorization"] = `Bearer ${token}`;
-  }
-  return h;
-}
-
-async function request<T>(url: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(url, { ...init, headers: { ...headers(), ...init?.headers } });
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(body.detail || res.statusText);
-  }
-  return res.json();
-}
+import { api, unwrap } from "./client";
 
 export interface WorkflowSummary {
   id: string;
@@ -37,7 +19,7 @@ export interface WorkflowRunSummary {
 }
 
 export function listWorkflows(): Promise<WorkflowSummary[]> {
-  return request(`${BASE}/workflows`);
+  return unwrap(api.GET("/api/v1/workflows"));
 }
 
 export function createWorkflow(data: {
@@ -45,14 +27,15 @@ export function createWorkflow(data: {
   description: string;
   yaml_definition: string;
 }): Promise<WorkflowSummary> {
-  return request(`${BASE}/workflows`, {
-    method: "POST",
-    body: JSON.stringify(data),
-  });
+  return unwrap(api.POST("/api/v1/workflows", { body: data }));
 }
 
 export function deleteWorkflow(id: string): Promise<void> {
-  return request(`${BASE}/workflows/${id}`, { method: "DELETE" });
+  return unwrap(
+    api.DELETE("/api/v1/workflows/{workflow_id}", {
+      params: { path: { workflow_id: id } },
+    }),
+  );
 }
 
 export function runWorkflow(
@@ -60,12 +43,20 @@ export function runWorkflow(
   params: Record<string, unknown> = {},
   dryRun = false
 ): Promise<WorkflowRunSummary> {
-  return request(`${BASE}/workflows/${id}/run?dry_run=${dryRun}`, {
-    method: "POST",
-    body: JSON.stringify({ parameters: params }),
-  });
+  // Contract carries dry_run in the request body (WorkflowRunRequest),
+  // not as the query param the legacy client sent.
+  return unwrap(
+    api.POST("/api/v1/workflows/{workflow_id}/run", {
+      params: { path: { workflow_id: id } },
+      body: { dry_run: dryRun, parameters: params },
+    }),
+  );
 }
 
 export function listWorkflowRuns(workflowId: string): Promise<WorkflowRunSummary[]> {
-  return request(`${BASE}/workflows/${workflowId}/runs`);
+  return unwrap(
+    api.GET("/api/v1/workflows/{workflow_id}/runs", {
+      params: { path: { workflow_id: workflowId } },
+    }),
+  );
 }

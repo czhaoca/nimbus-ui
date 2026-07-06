@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Wand2, ChevronRight, ChevronLeft, Check, AlertCircle } from "lucide-react";
-import { apiFetch } from "@/lib/api/client";
+import { Wand2, ChevronRight, ChevronLeft, Check, AlertCircle, Info } from "lucide-react";
+import { createProvider } from "@/lib/api/client";
 import type { ProviderCreate } from "@/lib/types";
 import { ProviderIcon, getProviderMeta } from "@/components/ProviderIcon";
 import { Card, CardContent } from "@/components/ui/card";
@@ -28,8 +28,6 @@ export default function ProviderWizardPage() {
     instance_index: 0,
     is_active: true,
   });
-  const [testStatus, setTestStatus] = useState<"idle" | "testing" | "success" | "error">("idle");
-  const [testError, setTestError] = useState("");
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
 
@@ -43,33 +41,11 @@ export default function ProviderWizardPage() {
 
   const canProceedToTest = form.id.trim() && form.display_name.trim() && form.provider_type;
 
-  const runTest = async () => {
-    setTestStatus("testing");
-    setTestError("");
-    try {
-      await apiFetch(`/api/providers/test`, {
-        method: "POST",
-        body: JSON.stringify({
-          provider_type: form.provider_type,
-          credentials_path: form.credentials_path,
-          region: form.region,
-        }),
-      });
-      setTestStatus("success");
-    } catch (e) {
-      setTestStatus("error");
-      setTestError((e as Error).message);
-    }
-  };
-
   const handleSave = async () => {
     setSaving(true);
     setSaveError("");
     try {
-      await apiFetch("/api/providers", {
-        method: "POST",
-        body: JSON.stringify(form),
-      });
+      await createProvider(form);
       router.push("/providers/health");
     } catch (e) {
       setSaveError((e as Error).message);
@@ -193,46 +169,24 @@ export default function ProviderWizardPage() {
         </Card>
       )}
 
-      {/* Step 2: Test Connection */}
+      {/* Step 2: Test Connection — deferred surface. The /api/v1 contract
+          has no pre-create connection-test endpoint (the old /providers/test
+          route does not exist engine-side); health is verified post-create
+          via /providers/health/check on the Provider Health page. */}
       {step === 2 && (
         <Card>
           <CardContent className="text-center space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Test the connection to{" "}
-              <span className="font-medium text-foreground">
-                {form.display_name}
-              </span>{" "}
-              ({form.provider_type})
-            </p>
-
-            {testStatus === "idle" && (
-              <Button onClick={runTest}>
-                Run Connection Test
-              </Button>
-            )}
-
-            {testStatus === "testing" && (
-              <p className="text-sm text-muted-foreground">Testing connection...</p>
-            )}
-
-            {testStatus === "success" && (
-              <div className="flex items-center justify-center gap-2 text-emerald-400">
-                <Check size={16} />
-                <span className="text-sm font-medium">Connection successful</span>
-              </div>
-            )}
-
-            {testStatus === "error" && (
-              <div className="space-y-2">
-                <Alert variant="destructive">
-                  <AlertCircle className="size-4" />
-                  <AlertDescription>{testError || "Connection failed"}</AlertDescription>
-                </Alert>
-                <Button variant="outline" size="sm" onClick={runTest}>
-                  Retry
-                </Button>
-              </div>
-            )}
+            <Alert>
+              <Info className="size-4" />
+              <AlertDescription>
+                Pre-create connection testing is not exposed by the /api/v1
+                contract. After saving, the connection for{" "}
+                <span className="font-medium text-foreground">
+                  {form.display_name || "this provider"}
+                </span>{" "}
+                is verified on the Provider Health page.
+              </AlertDescription>
+            </Alert>
           </CardContent>
         </Card>
       )}

@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { Tags, Check } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
-import { apiFetch } from "@/lib/api/client";
+import { listResources, updateResourceTags } from "@/lib/api/client";
 import type { Resource } from "@/lib/types";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -41,7 +41,7 @@ export default function BulkTagsPage() {
 
   const fetchResources = () => {
     setLoading(true);
-    apiFetch<Resource[]>("/api/resources")
+    listResources()
       .then(setResources)
       .catch((e) => setError((e as Error).message))
       .finally(() => setLoading(false));
@@ -86,10 +86,7 @@ export default function BulkTagsPage() {
           delete updatedTags[tagKey.trim()];
         }
 
-        await apiFetch(`/api/resources/${id}/tags`, {
-          method: "PUT",
-          body: JSON.stringify({ tags: updatedTags }),
-        });
+        await updateResourceTags(id, updatedTags);
       }
       fetchResources();
       setSelected(new Set());

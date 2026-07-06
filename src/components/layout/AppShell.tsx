@@ -5,7 +5,7 @@ import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { AppSidebar } from "@/components/Sidebar";
 import { useWebSocket } from "@/lib/hooks/useWebSocket";
-import { setAuthToken } from "@/lib/api/client";
+import { api, setAuthToken } from "@/lib/api/client";
 import { Suspense } from "react";
 import { LoginPage } from "@/components/layout/LoginPage";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
@@ -63,10 +63,9 @@ export function AppShell({ children }: { children: ReactNode }) {
       try { setCurrentUser(JSON.parse(savedUser)); } catch { /* ignore */ }
     }
 
-    fetch("/api/providers", {
-      headers: saved ? { Authorization: `Bearer ${saved}` } : {},
-    }).then((r) => {
-      if (r.status === 401) setNeedsAuth(true);
+    // Token validity probe: the typed client injects the token set above.
+    api.GET("/api/v1/auth/me").then(({ response }) => {
+      if (response.status === 401) setNeedsAuth(true);
       setAuthChecked(true);
     }).catch(() => setAuthChecked(true));
   }, []);

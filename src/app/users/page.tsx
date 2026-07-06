@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { apiFetch } from "@/lib/api/client";
+import { listUsers, createUser, updateUser, deleteUser } from "@/lib/api/client";
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { AlertCircle, CheckCircle2 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
@@ -73,8 +73,8 @@ export default function UsersPage() {
     setLoading(true);
     setError(null);
     try {
-      const data = await apiFetch<User[]>("/api/users");
-      setUsers(data);
+      const data = await listUsers();
+      setUsers(data as User[]);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load users");
     } finally {
@@ -91,14 +91,11 @@ export default function UsersPage() {
     setCreating(true);
     setError(null);
     try {
-      await apiFetch("/api/users", {
-        method: "POST",
-        body: JSON.stringify({
-          username: newUsername.trim(),
-          email: newEmail.trim(),
-          password: newPassword,
-          role: newRole,
-        }),
+      await createUser({
+        username: newUsername.trim(),
+        email: newEmail.trim() || null,
+        password: newPassword,
+        role: newRole,
       });
       setNewUsername("");
       setNewEmail("");
@@ -117,7 +114,7 @@ export default function UsersPage() {
   const handleDelete = async () => {
     if (!deleteTarget) return;
     try {
-      await apiFetch(`/api/users/${deleteTarget.id}`, { method: "DELETE" });
+      await deleteUser(deleteTarget.id);
       setDeleteTarget(null);
       setSuccess("User deleted");
       await fetchUsers();
@@ -129,10 +126,8 @@ export default function UsersPage() {
   const handleRoleChange = async (userId: string, role: User["role"]) => {
     setError(null);
     try {
-      await apiFetch(`/api/users/${userId}`, {
-        method: "PATCH",
-        body: JSON.stringify({ role }),
-      });
+      // Contract exposes PUT (not PATCH) for user updates.
+      await updateUser(userId, { role });
       setSuccess("Role updated");
       await fetchUsers();
     } catch (err) {
@@ -145,10 +140,9 @@ export default function UsersPage() {
     setChangingPw(true);
     setError(null);
     try {
-      await apiFetch(`/api/users/${pwUserId}/password`, {
-        method: "PUT",
-        body: JSON.stringify({ password: newPw }),
-      });
+      // Per-user password change rides the user-update endpoint; the old
+      // /users/{id}/password route has no /api/v1 equivalent.
+      await updateUser(pwUserId, { password: newPw });
       setPwUserId(null);
       setNewPw("");
       setSuccess("Password changed successfully");

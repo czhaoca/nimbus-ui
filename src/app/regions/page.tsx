@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import { MapPin } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import Link from "next/link";
-import { apiFetch } from "@/lib/api/client";
+import { listProviders, listResources } from "@/lib/api/client";
 import type { Resource, Provider } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -30,8 +30,8 @@ export default function RegionsPage() {
 
   useEffect(() => {
     Promise.all([
-      apiFetch<Provider[]>("/api/providers"),
-      apiFetch<Resource[]>("/api/resources"),
+      listProviders(),
+      listResources(),
     ])
       .then(([p, r]) => {
         setProviders(p);

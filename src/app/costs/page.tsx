@@ -5,8 +5,7 @@ import { type ColumnDef } from "@tanstack/react-table";
 import { DollarSign, AlertCircle } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { DataTable } from "@/components/DataTable";
-import { apiFetch } from "@/lib/api/client";
-import type { Provider, Resource } from "@/lib/types";
+import { listProviders, listResources } from "@/lib/api/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -28,8 +27,8 @@ export default function CostsPage() {
 
   useEffect(() => {
     Promise.all([
-      apiFetch<Provider[]>("/api/providers"),
-      apiFetch<Resource[]>("/api/resources"),
+      listProviders(),
+      listResources(),
     ])
       .then(([providers, resources]) => {
         const data: CostRow[] = providers.map((p) => {
