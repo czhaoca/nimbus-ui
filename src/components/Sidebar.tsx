@@ -69,6 +69,9 @@ const MENU_GROUPS: MenuGroup[] = [
     { label: "Audit Log", path: "/audit", icon: <ScrollText /> },
     { label: "Error Log", path: "/errors", icon: <AlertTriangle /> },
   ]},
+  { label: "Security Review", icon: <Shield />, items: [
+    { label: "Security Review", path: "/security-review", icon: <Shield /> },
+  ]},
   { label: "Users & Settings", icon: <Users />, items: [
     { label: "User Management", path: "/users", icon: <Users /> },
     { label: "Settings", path: "/settings", icon: <Settings /> },
