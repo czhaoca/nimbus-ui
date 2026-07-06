@@ -8,6 +8,7 @@ import {
   BarChart3, TrendingUp, Timer, GitBranch, Webhook, ScrollText,
   AlertTriangle, Activity, Users, Settings, Search, ChevronRight,
   BookOpen, ExternalLink, Globe, Hammer, ShieldCheck, CalendarClock,
+  Bell,
 } from "lucide-react";
 import {
   Sidebar as ShadcnSidebar,
@@ -71,6 +72,7 @@ const MENU_GROUPS: MenuGroup[] = [
     { label: "Activity Timeline", path: "/activity", icon: <Activity /> },
     { label: "Audit Log", path: "/audit", icon: <ScrollText /> },
     { label: "Error Log", path: "/errors", icon: <AlertTriangle /> },
+    { label: "Alerts", path: "/alerts", icon: <Bell /> },
   ]},
   { label: "Security Review", icon: <Shield />, items: [
     { label: "Security Review", path: "/security-review", icon: <Shield /> },
