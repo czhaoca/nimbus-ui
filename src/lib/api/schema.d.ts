@@ -59,8 +59,11 @@ export interface paths {
          * Bot Health
          * @description Health check for chatbot platform connections.
          *
-         *     Returns status of each configured bot platform: connected state,
-         *     restart count, last error, and token configuration status.
+         *     Contract-stable proxy since #258: the bot supervisors run in the
+         *     extracted nimbus-chatbot runtime, so this endpoint resolves the runtime
+         *     (CHATBOT_RUNTIME_URL env override, else the environment-registry
+         *     managed-app endpoint), GETs its /health and passes the payload through.
+         *     Unregistered or unreachable runtime degrades instead of erroring.
          *     SIEM-agnostic — scrape this endpoint from any monitoring tool.
          */
         get: operations["bot_health_api_health_bots_get"];
@@ -907,6 +910,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/chat/approvals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Approvals
+         * @description List approvals by status (default ``pending``), oldest first.
+         */
+        get: operations["list_approvals_api_v1_chat_approvals_get"];
+        put?: never;
+        /**
+         * Stage Approval
+         * @description Stage a pending approval — bridge_approvals.create_approval_request envelope.
+         */
+        post: operations["stage_approval_api_v1_chat_approvals_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/chat/approvals/{approval_id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Approve Approval
+         * @description Approve a pending request (dual-gated); executor runs server-side.
+         */
+        post: operations["approve_approval_api_v1_chat_approvals__approval_id__approve_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/chat/approvals/{approval_id}/deny": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Deny Approval
+         * @description Deny a pending request (dual-gated) — no execution, no audit row.
+         */
+        post: operations["deny_approval_api_v1_chat_approvals__approval_id__deny_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/chat/channels/{platform}": {
         parameters: {
             query?: never;
@@ -917,11 +984,14 @@ export interface paths {
         /**
          * Get Chat Channels
          * @description Channel mappings for ``platform`` (discord, slack, telegram, …).
+         *
+         *     Read posture matches the op surface: any principal (including the
+         *     open-mode anonymous VIEWER) may read; ids are non-secret routing config.
          */
         get: operations["get_chat_channels_api_v1_chat_channels__platform__get"];
         /**
          * Update Chat Channels
-         * @description Upsert the singleton channel mapping row for ``platform``.
+         * @description Upsert the singleton channel mapping row for ``platform`` (ADMIN only).
          */
         put: operations["update_chat_channels_api_v1_chat_channels__platform__put"];
         post?: never;
@@ -931,27 +1001,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/chatbot/synology/webhook": {
+    "/api/v1/chat/roles/{platform}/{platform_user_id}": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get?: never;
-        put?: never;
         /**
-         * Receive
-         * @description Handle a Synology Chat outgoing-webhook POST; reply as JSON ``{"text": …}``.
+         * Get Chat Role
+         * @description Resolve one chat user's Nimbus role (``viewer``/``operator``/``admin``).
          */
-        post: operations["receive_api_v1_chatbot_synology_webhook_post"];
+        get: operations["get_chat_role_api_v1_chat_roles__platform___platform_user_id__get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/api/v1/chatbot/telegram/webhook": {
+    "/api/v1/chatbot/{platform}/{path}": {
         parameters: {
             query?: never;
             header?: never;
@@ -959,40 +1029,16 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Telegram Webhook Info
-         * @description Health check / info endpoint for the Telegram webhook.
+         * Relay Chatbot Webhook
+         * @description Forward a platform webhook byte-faithfully to the chatbot runtime.
          */
-        get: operations["telegram_webhook_info_api_v1_chatbot_telegram_webhook_get"];
+        get: operations["relay_chatbot_webhook_get"];
         put?: never;
         /**
-         * Telegram Webhook
-         * @description Handle incoming Telegram Update via webhook.
+         * Relay Chatbot Webhook
+         * @description Forward a platform webhook byte-faithfully to the chatbot runtime.
          */
-        post: operations["telegram_webhook_api_v1_chatbot_telegram_webhook_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/chatbot/whatsapp/webhook": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Verify Webhook
-         * @description Handle Meta webhook verification challenge.
-         */
-        get: operations["verify_webhook_api_v1_chatbot_whatsapp_webhook_get"];
-        put?: never;
-        /**
-         * Receive Message
-         * @description Handle incoming WhatsApp messages (text commands + interactive replies).
-         */
-        post: operations["receive_message_api_v1_chatbot_whatsapp_webhook_post"];
+        post: operations["relay_chatbot_webhook_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1518,7 +1564,7 @@ export interface paths {
         /**
          * Update Discord Channels
          * @deprecated
-         * @description Deprecated — use ``PUT /api/chat/channels/discord``.
+         * @description Deprecated — use ``PUT /api/chat/channels/discord`` (same ADMIN gate).
          */
         put: operations["update_discord_channels_api_v1_discord_channels_put"];
         post?: never;
@@ -2113,6 +2159,48 @@ export interface paths {
          * @description Dispatch one operation through the registry (tier gate + audit apply).
          */
         post: operations["execute_op_api_v1_ops__op_id__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ops/{op_id}/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Confirm Op
+         * @description Apply a pending dryrun (#265): mirrors registry.execute_confirm —
+         *     rejects non-pending rows exactly like in-process.
+         */
+        post: operations["confirm_op_api_v1_ops__op_id__confirm_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ops/{op_id}/dryrun": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Dryrun Op
+         * @description Tier-2 preview (#265): mirrors registry.execute_dryrun — the pending
+         *     ActionLog id in the response is the confirm token.
+         */
+        post: operations["dryrun_op_api_v1_ops__op_id__dryrun_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4932,6 +5020,35 @@ export interface components {
             summary: string;
             /** Target Inventory Id */
             target_inventory_id: string | null;
+        };
+        /**
+         * ApprovalCreate
+         * @description POST body staging a pending approval for a dangerous operation.
+         */
+        ApprovalCreate: {
+            /** Operation */
+            operation: string;
+            /** Payload */
+            payload?: {
+                [key: string]: unknown;
+            };
+            /** Requested By */
+            requested_by: string;
+            /**
+             * Ttl Seconds
+             * @default 3600
+             */
+            ttl_seconds: number;
+        };
+        /**
+         * ApprovalDecision
+         * @description POST body identifying the PLATFORM user pressing approve/deny.
+         */
+        ApprovalDecision: {
+            /** Platform */
+            platform: string;
+            /** Platform User Id */
+            platform_user_id: string;
         };
         /** AssignVMRequest */
         AssignVMRequest: {
@@ -8298,6 +8415,148 @@ export interface operations {
             };
         };
     };
+    list_approvals_api_v1_chat_approvals_get: {
+        parameters: {
+            query?: {
+                status?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    stage_approval_api_v1_chat_approvals_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApprovalCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    approve_approval_api_v1_chat_approvals__approval_id__approve_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                approval_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApprovalDecision"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    deny_approval_api_v1_chat_approvals__approval_id__deny_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                approval_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApprovalDecision"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_chat_channels_api_v1_chat_channels__platform__get: {
         parameters: {
             query?: never;
@@ -8364,31 +8623,14 @@ export interface operations {
             };
         };
     };
-    receive_api_v1_chatbot_synology_webhook_post: {
+    get_chat_role_api_v1_chat_roles__platform___platform_user_id__get: {
         parameters: {
             query?: never;
             header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
+            path: {
+                platform: string;
+                platform_user_id: string;
             };
-        };
-    };
-    telegram_webhook_info_api_v1_chatbot_telegram_webhook_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
             cookie?: never;
         };
         requestBody?: never;
@@ -8404,37 +8646,25 @@ export interface operations {
                     };
                 };
             };
-        };
-    };
-    telegram_webhook_api_v1_chatbot_telegram_webhook_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
+            /** @description Validation Error */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
     };
-    verify_webhook_api_v1_chatbot_whatsapp_webhook_get: {
+    relay_chatbot_webhook_get: {
         parameters: {
-            query?: {
-                "hub.mode"?: string | null;
-                "hub.challenge"?: string | null;
-                "hub.verify_token"?: string | null;
-            };
+            query?: never;
             header?: never;
-            path?: never;
+            path: {
+                platform: string;
+                path: string;
+            };
             cookie?: never;
         };
         requestBody?: never;
@@ -8459,11 +8689,14 @@ export interface operations {
             };
         };
     };
-    receive_message_api_v1_chatbot_whatsapp_webhook_post: {
+    relay_chatbot_webhook_post: {
         parameters: {
             query?: never;
             header?: never;
-            path?: never;
+            path: {
+                platform: string;
+                path: string;
+            };
             cookie?: never;
         };
         requestBody?: never;
@@ -8475,6 +8708,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -10731,6 +10973,84 @@ export interface operations {
         };
     };
     execute_op_api_v1_ops__op_id__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                op_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": {
+                    [key: string]: unknown;
+                } | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    confirm_op_api_v1_ops__op_id__confirm_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                op_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    [key: string]: unknown;
+                };
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    dryrun_op_api_v1_ops__op_id__dryrun_post: {
         parameters: {
             query?: never;
             header?: never;
