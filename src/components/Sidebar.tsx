@@ -7,7 +7,7 @@ import {
   Plus, Monitor, Network, Shield, HardDrive, Tag, Tags, DollarSign,
   BarChart3, TrendingUp, Timer, GitBranch, Webhook, ScrollText,
   AlertTriangle, Activity, Users, Settings, Search, ChevronRight,
-  BookOpen, ExternalLink, Globe,
+  BookOpen, ExternalLink, Globe, Hammer,
 } from "lucide-react";
 import {
   Sidebar as ShadcnSidebar,
@@ -62,6 +62,7 @@ const MENU_GROUPS: MenuGroup[] = [
   { label: "Workflows", icon: <GitBranch />, items: [
     { label: "Workflow Manager", path: "/workflows", icon: <GitBranch /> },
     { label: "Webhook Events", path: "/webhooks", icon: <Webhook /> },
+    { label: "CI Status", path: "/ci", icon: <Hammer /> },
   ]},
   { label: "Activity & Logs", icon: <ScrollText />, items: [
     { label: "Activity Timeline", path: "/activity", icon: <Activity /> },
