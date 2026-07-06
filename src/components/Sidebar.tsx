@@ -7,7 +7,7 @@ import {
   Plus, Monitor, Network, Shield, HardDrive, Tag, Tags, DollarSign,
   BarChart3, TrendingUp, Timer, GitBranch, Webhook, ScrollText,
   AlertTriangle, Activity, Users, Settings, Search, ChevronRight,
-  BookOpen, ExternalLink, Globe, Hammer,
+  BookOpen, ExternalLink, Globe, Hammer, ShieldCheck,
 } from "lucide-react";
 import {
   Sidebar as ShadcnSidebar,
@@ -56,6 +56,7 @@ const MENU_GROUPS: MenuGroup[] = [
   ]},
   { label: "Budget & Costs", icon: <DollarSign />, items: [
     { label: "Cost Comparison", path: "/costs", icon: <BarChart3 /> },
+    { label: "Budget Guardian", path: "/costs/guardian", icon: <ShieldCheck /> },
     { label: "Usage Analytics", path: "/analytics", icon: <TrendingUp /> },
     { label: "Rate Limits", path: "/rate-limits", icon: <Timer /> },
   ]},

@@ -1,25 +1,16 @@
-import { api, unwrap } from "@/lib/api/client";
+import { executeOp } from "@/lib/api/ops";
 
 import type {
   DismissResult,
   FindingFilters,
-  OpEnvelope,
   PromoteInput,
   PromoteResult,
   ReviewFinding,
 } from "./types";
 
-// security.review.* has no dedicated REST routes; every op is reachable via
-// the schema-present ops bridge (POST /api/v1/ops/{op_id}). The registry
-// enforces the tier gate (list/show Tier-1 viewer; promote/dismiss Tier-2
-// operator → 403 "denied" for viewers) and writes the audit row.
-const executeOp = <T>(opId: string, body: Record<string, unknown>) =>
-  unwrap<OpEnvelope<T>>(
-    api.POST("/api/v1/ops/{op_id}", {
-      params: { path: { op_id: opId } },
-      body,
-    }),
-  );
+// security.review.* has no dedicated REST routes; every op goes through the
+// ops bridge (see lib/api/ops.ts). list/show are Tier-1 viewer;
+// promote/dismiss are Tier-2 operator → 403 "denied" for viewers.
 
 export const fetchFindings = async (
   filters: FindingFilters = {},

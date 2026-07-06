@@ -21,15 +21,6 @@ export const FINDING_STATUSES = [
   "promoted",
 ] as const;
 
-// Transport envelope of POST /api/v1/ops/{op_id} (op errors are raised to
-// HTTP 4xx by the engine, so a 200 envelope always carries success data).
-export interface OpEnvelope<T> {
-  status: string;
-  message: string;
-  data: T;
-  action_log_id: number | null;
-}
-
 export interface FindingFilters {
   status?: string;
   severity?: string;

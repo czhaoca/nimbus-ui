@@ -20,6 +20,7 @@ export type BudgetRule = Schemas["BudgetRuleOut"];
 export type BudgetRuleCreate = Schemas["BudgetRuleCreate"];
 export type SpendingRecord = Schemas["SpendingRecordOut"];
 export type BudgetStatus = Schemas["BudgetStatus"];
+export type BillingConfig = Schemas["BillingConfigOut"];
 export type ActionLogEntry = Schemas["ActionOut"];
 
 /** UI-side action verb union (request param, not a response schema). */
