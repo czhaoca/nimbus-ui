@@ -1,0 +1,140 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { cleanup, renderHook } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import type { ReactNode } from "react";
+import { useWebSocket } from "../useWebSocket";
+import { showToast } from "@/components/Toasts";
+
+vi.mock("@/components/Toasts", () => ({
+  showToast: vi.fn(),
+}));
+
+class FakeWebSocket {
+  static instances: FakeWebSocket[] = [];
+  url: string;
+  onopen: (() => void) | null = null;
+  onmessage: ((event: { data: string }) => void) | null = null;
+  onclose: (() => void) | null = null;
+  constructor(url: string) {
+    this.url = url;
+    FakeWebSocket.instances.push(this);
+  }
+  close() {}
+}
+
+function lastSocket(): FakeWebSocket {
+  const ws = FakeWebSocket.instances.at(-1);
+  if (!ws) throw new Error("no WebSocket was constructed");
+  return ws;
+}
+
+describe("useWebSocket incident handling", () => {
+  let queryClient: QueryClient;
+  let invalidateSpy: ReturnType<typeof vi.spyOn>;
+
+  const wrapper = ({ children }: { children: ReactNode }) => (
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  );
+
+  beforeEach(() => {
+    FakeWebSocket.instances = [];
+    vi.stubGlobal("WebSocket", FakeWebSocket);
+    queryClient = new QueryClient();
+    invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
+  });
+
+  afterEach(() => {
+    // RTL auto-cleanup needs test.globals; with explicit vitest imports the
+    // unmount must be manual or hook trees leak across tests.
+    cleanup();
+    vi.unstubAllGlobals();
+    vi.clearAllMocks();
+  });
+
+  function fire(event: unknown) {
+    lastSocket().onmessage?.({ data: JSON.stringify(event) });
+  }
+
+  it("health_failure → destructive toast + health/provider invalidation", () => {
+    renderHook(() => useWebSocket(), { wrapper });
+
+    fire({
+      type: "incident",
+      action: "health_failure",
+      resource_id: "r-1",
+      provider_id: "p-1",
+      display_name: "vm-web-1",
+    });
+
+    expect(showToast).toHaveBeenCalledTimes(1);
+    const [message, toastType] = vi.mocked(showToast).mock.calls[0];
+    expect(message).toContain("vm-web-1");
+    expect(toastType).toBe("error");
+
+    const invalidated = invalidateSpy.mock.calls.map(
+      (c: unknown[]) => (c[0] as { queryKey: string[] }).queryKey[0],
+    );
+    expect(invalidated).toEqual(
+      expect.arrayContaining(["health", "providers", "provider-status"]),
+    );
+  });
+
+  it("health_recovery → success toast + same invalidation", () => {
+    renderHook(() => useWebSocket(), { wrapper });
+
+    fire({
+      type: "incident",
+      action: "health_recovery",
+      resource_id: "r-2",
+      provider_id: "p-1",
+    });
+
+    expect(showToast).toHaveBeenCalledTimes(1);
+    const [message, toastType] = vi.mocked(showToast).mock.calls[0];
+    expect(message).toContain("r-2");
+    expect(toastType).toBe("success");
+
+    const invalidated = invalidateSpy.mock.calls.map(
+      (c: unknown[]) => (c[0] as { queryKey: string[] }).queryKey[0],
+    );
+    expect(invalidated).toEqual(
+      expect.arrayContaining(["health", "providers", "provider-status"]),
+    );
+  });
+
+  it("resource_change keeps its existing behavior", () => {
+    renderHook(() => useWebSocket(), { wrapper });
+
+    fire({
+      type: "resource_change",
+      action: "stop",
+      resource_id: "r-3",
+      provider_id: "p-2",
+    });
+
+    expect(showToast).toHaveBeenCalledTimes(1);
+    const invalidated = invalidateSpy.mock.calls.map(
+      (c: unknown[]) => (c[0] as { queryKey: string[] }).queryKey[0],
+    );
+    expect(invalidated).toEqual(
+      expect.arrayContaining(["resources", "providers", "budget-status"]),
+    );
+  });
+
+  it("unknown event types are ignored without throwing", () => {
+    renderHook(() => useWebSocket(), { wrapper });
+
+    expect(() =>
+      fire({ type: "future_event_type", payload: { x: 1 } }),
+    ).not.toThrow();
+    expect(showToast).not.toHaveBeenCalled();
+    expect(invalidateSpy).not.toHaveBeenCalled();
+  });
+
+  it("pong frames are ignored silently", () => {
+    renderHook(() => useWebSocket(), { wrapper });
+
+    expect(() => fire({ type: "pong" })).not.toThrow();
+    expect(showToast).not.toHaveBeenCalled();
+  });
+});

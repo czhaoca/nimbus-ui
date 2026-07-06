@@ -28,11 +28,31 @@ export function useWebSocket() {
       ws.onmessage = (event: MessageEvent) => {
         try {
           const data: WsEvent = JSON.parse(event.data as string);
-          if (data.type === "resource_change") {
-            queryClient.invalidateQueries({ queryKey: ["resources"] });
-            queryClient.invalidateQueries({ queryKey: ["providers"] });
-            queryClient.invalidateQueries({ queryKey: ["budget-status"] });
-            showToast(`Resource ${data.resource_id}: ${data.action}`, "info");
+          switch (data.type) {
+            case "resource_change":
+              queryClient.invalidateQueries({ queryKey: ["resources"] });
+              queryClient.invalidateQueries({ queryKey: ["providers"] });
+              queryClient.invalidateQueries({ queryKey: ["budget-status"] });
+              showToast(`Resource ${data.resource_id}: ${data.action}`, "info");
+              break;
+            case "incident": {
+              queryClient.invalidateQueries({ queryKey: ["health"] });
+              queryClient.invalidateQueries({ queryKey: ["providers"] });
+              queryClient.invalidateQueries({ queryKey: ["provider-status"] });
+              const name = data.display_name || data.resource_id;
+              if (data.action === "health_failure") {
+                showToast(`Health failure: ${name}`, "error");
+              } else {
+                showToast(`Recovered: ${name}`, "success");
+              }
+              break;
+            }
+            case "pong":
+              break;
+            default:
+              // Unknown future event types: log-and-ignore, never throw
+              // (contract rule — the committed catalog may grow).
+              console.debug("[ws] unhandled event type", data);
           }
         } catch {
           // ignore non-JSON messages
