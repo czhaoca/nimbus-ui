@@ -37,6 +37,7 @@ const MENU_GROUPS: MenuGroup[] = [
   ]},
   { label: "Network", icon: <Network />, items: [
     { label: "Network Plan", path: "/network", icon: <Network /> },
+    { label: "Edge", path: "/edge", icon: <Globe /> },
   ]},
   { label: "Providers", icon: <Cloud />, items: [
     { label: "All Providers", path: "/providers", icon: <Server /> },
