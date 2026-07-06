@@ -4,6 +4,10 @@ Next.js 15 dashboard for the [Nimbus](https://github.com/czhaoca/nimbus)
 infrastructure platform — a standalone API consumer speaking the versioned
 `/api/v1` contract.
 
+Contributing (human or agent)? Start with **[AGENTS.md](AGENTS.md)** — the
+repo's operating contract (contract workflow, verification gate, feature
+conventions, privacy rules).
+
 ## Contract workflow
 
 - Pinned contract version: `package.json` → `nimbusContract` (semver; matches

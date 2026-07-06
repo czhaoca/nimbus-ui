@@ -12,7 +12,7 @@
     "test:e2e:update": "playwright test --update-snapshots",
     "typecheck": "tsc --noEmit",
     "sync-contract": "cp ../nimbus/clients/ts/src/schema.d.ts src/lib/api/schema.d.ts",
-    "check-contract": "test -f ../nimbus/clients/ts/src/schema.d.ts && diff -q ../nimbus/clients/ts/src/schema.d.ts src/lib/api/schema.d.ts || echo 'backend checkout absent - vendored schema is authoritative (pinned contract 1.0.0)'"
+    "check-contract": "if [ -f ../nimbus/clients/ts/src/schema.d.ts ]; then diff -q ../nimbus/clients/ts/src/schema.d.ts src/lib/api/schema.d.ts; else echo 'backend checkout absent - vendored schema is authoritative (pinned contract 1.0.0)'; fi"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.95.2",
