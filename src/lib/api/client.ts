@@ -13,6 +13,7 @@ import type {
   BudgetStatus,
   SpendingRecord,
   ActionLogEntry,
+  RateLimitConfig,
 } from "@/lib/types";
 
 let _authToken: string | null = null;
@@ -307,13 +308,8 @@ export const updateSetting = (key: string, value: string) =>
     }),
   );
 
-// Rate limits
-export interface RateLimitConfig {
-  requests_per_minute: number;
-  requests_per_hour: number;
-  burst_size: number;
-  enabled: boolean;
-}
+// Rate limits — the schema component IS the full engine shape (2 fields;
+// verified against engine settings.py in nimbus-ui#15): alias per DEC-4.
 export const getRateLimits = () =>
   unwrap<RateLimitConfig>(api.GET("/api/v1/settings/rate-limits"));
 export const saveRateLimits = (config: RateLimitConfig) =>

@@ -23,6 +23,7 @@ export type BudgetStatus = Schemas["BudgetStatus"];
 export type BillingConfig = Schemas["BillingConfigOut"];
 export type ActionLogEntry = Schemas["ActionOut"];
 export type AlertRuleCreate = Schemas["AlertRuleCreate"];
+export type RateLimitConfig = Schemas["RateLimitConfig"];
 
 /** UI-side action verb union (request param, not a response schema). */
 export type ResourceAction = "stop" | "start" | "terminate" | "health_check";

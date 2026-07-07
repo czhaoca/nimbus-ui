@@ -4,27 +4,21 @@ import { useState, useEffect } from "react";
 import { Gauge, Save } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { getRateLimits, saveRateLimits } from "@/lib/api/client";
+import type { RateLimitConfig } from "@/lib/types";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AlertCircle, CheckCircle2 } from "lucide-react";
 
-interface RateLimitConfig {
-  requests_per_minute: number;
-  requests_per_hour: number;
-  burst_size: number;
-  enabled: boolean;
-}
-
+// The engine's rate-limit config is exactly these two fields (schema
+// component RateLimitConfig; nimbus-ui#15). The old burst_size/enabled
+// controls were UI-only phantoms the engine silently dropped on save.
 const DEFAULT_CONFIG: RateLimitConfig = {
   requests_per_minute: 60,
   requests_per_hour: 1000,
-  burst_size: 10,
-  enabled: true,
 };
 
 export default function RateLimitsPage() {
@@ -57,7 +51,7 @@ export default function RateLimitsPage() {
     }
   };
 
-  const update = (field: keyof RateLimitConfig, value: number | boolean) => {
+  const update = (field: keyof RateLimitConfig, value: number) => {
     setConfig((prev) => ({ ...prev, [field]: value }));
   };
 
@@ -90,15 +84,6 @@ export default function RateLimitsPage() {
 
       <Card>
         <CardContent className="space-y-4">
-          <div className="flex items-center gap-3">
-            <Switch
-              id="rate-limit-enabled"
-              checked={config.enabled}
-              onCheckedChange={(checked) => update("enabled", checked)}
-            />
-            <Label htmlFor="rate-limit-enabled">Enable Rate Limiting</Label>
-          </div>
-
           <div className="space-y-2">
             <Label htmlFor="rpm">Requests per Minute</Label>
             <Input
@@ -109,7 +94,6 @@ export default function RateLimitsPage() {
               onChange={(e) =>
                 update("requests_per_minute", parseInt(e.target.value, 10) || 1)
               }
-              disabled={!config.enabled}
             />
           </div>
 
@@ -123,25 +107,7 @@ export default function RateLimitsPage() {
               onChange={(e) =>
                 update("requests_per_hour", parseInt(e.target.value, 10) || 1)
               }
-              disabled={!config.enabled}
             />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="burst">Burst Size</Label>
-            <Input
-              id="burst"
-              type="number"
-              min={1}
-              value={config.burst_size}
-              onChange={(e) =>
-                update("burst_size", parseInt(e.target.value, 10) || 1)
-              }
-              disabled={!config.enabled}
-            />
-            <p className="text-xs text-muted-foreground">
-              Maximum number of concurrent requests allowed in a burst.
-            </p>
           </div>
 
           <Button onClick={handleSave} disabled={saving} size="sm">
