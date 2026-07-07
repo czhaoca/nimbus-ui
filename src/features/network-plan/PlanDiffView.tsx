@@ -2,6 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -56,13 +57,22 @@ function DiffTable({ title, items, variant }: {
 }
 
 export function PlanDiffView() {
-  const { data: diff, isLoading } = useQuery({
+  const { data: diff, isLoading, error } = useQuery({
     queryKey: ["network-plan-diff"],
     queryFn: fetchPlanDiff,
     refetchInterval: 60_000,
   });
 
   if (isLoading) return <Skeleton className="h-40 rounded-xl" />;
+  if (error) {
+    return (
+      <Alert variant="destructive">
+        <AlertDescription>
+          {error instanceof Error ? error.message : "Failed to load the plan diff"}
+        </AlertDescription>
+      </Alert>
+    );
+  }
   if (!diff) return null;
 
   const empty =

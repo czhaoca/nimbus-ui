@@ -193,17 +193,14 @@ describe("NetworkPlanPage", () => {
     expect(screen.getByText("nimbus network register")).toBeTruthy();
   });
 
-  it("masks a tree fetch error as the empty state (current behavior)", async () => {
-    // DEFECT (pinned, not fixed): PlanTreeView ignores useQuery's error —
-    // a failed fetch leaves `roots` undefined, which renders the same
-    // "No allocations registered" copy as a genuinely empty plan.
+  it("surfaces a tree fetch error honestly (nimbus-ui#20)", async () => {
+    // nimbus-ui#20: a failed tree fetch surfaces the error instead of
+    // masquerading as an empty plan.
     routeFetch({ tree: { status: 500, detail: "plan store unavailable" } });
     renderPage();
 
-    expect(
-      await screen.findByText(/no allocations registered/i),
-    ).toBeTruthy();
-    expect(screen.queryByText(/plan store unavailable/)).toBeNull();
+    expect(await screen.findByText(/plan store unavailable/)).toBeTruthy();
+    expect(screen.queryByText(/no allocations registered/i)).toBeNull();
   });
 
   it("switches to the diff tab and renders adds, removes and matches", async () => {
@@ -278,9 +275,9 @@ describe("NetworkPlanPage", () => {
     expect(await screen.findByText(/no allocations to compare/i)).toBeTruthy();
   });
 
-  it("renders nothing on a diff fetch error (current behavior)", async () => {
-    // DEFECT (pinned, not fixed): PlanDiffView returns null when the query
-    // errors — the tab goes blank with no error message.
+  it("surfaces a diff fetch error honestly (nimbus-ui#20)", async () => {
+    // nimbus-ui#20: a failed diff fetch surfaces the error instead of a
+    // blank tab.
     routeFetch({ diff: { status: 500, detail: "diff unavailable" } });
     renderPage();
     const user = userEvent.setup();
@@ -290,7 +287,7 @@ describe("NetworkPlanPage", () => {
     );
 
     await waitFor(() => expect(skeleton()).toBeNull());
-    expect(screen.queryByText(/diff unavailable/)).toBeNull();
+    expect(await screen.findByText(/diff unavailable/)).toBeTruthy();
     expect(screen.queryByText("Planned but NOT Active")).toBeNull();
     expect(screen.queryByText("Active but NOT in Plan")).toBeNull();
     expect(screen.queryByText(/no allocations to compare/i)).toBeNull();

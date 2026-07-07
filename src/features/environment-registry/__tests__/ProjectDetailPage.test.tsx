@@ -196,17 +196,13 @@ describe("ProjectDetailPage", () => {
     expect(screen.getByText("No endpoints allocated.")).toBeTruthy();
   });
 
-  it("shows the empty state on a fetch error (no error branch — known gap)", async () => {
-    // Pinned current behavior: the page only checks isLoading; a failed
-    // slots query falls through to `data ?? []` and renders as if the
-    // project had no slots instead of surfacing the error. Defect reported
-    // in the work-order notes; do not fix here.
+  it("surfaces a slots fetch error honestly (nimbus-ui#20)", async () => {
     routeFetch({ slots: { status: 500, detail: "registry unavailable" } });
     renderPage();
 
+    expect(await screen.findByText("registry unavailable")).toBeTruthy();
     expect(
-      await screen.findByText("No slots reserved for this project."),
-    ).toBeTruthy();
-    expect(screen.queryByText("registry unavailable")).toBeNull();
+      screen.queryByText("No slots reserved for this project."),
+    ).toBeNull();
   });
 });

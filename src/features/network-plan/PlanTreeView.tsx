@@ -2,6 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -49,13 +50,22 @@ function TreeNode({ node, depth = 0 }: { node: PlanTreeNode; depth?: number }) {
 }
 
 export function PlanTreeView() {
-  const { data: roots, isLoading } = useQuery({
+  const { data: roots, isLoading, error } = useQuery({
     queryKey: ["network-plan-tree"],
     queryFn: () => fetchPlanTree(),
     refetchInterval: 60_000,
   });
 
   if (isLoading) return <Skeleton className="h-60 rounded-xl" />;
+  if (error) {
+    return (
+      <Alert variant="destructive">
+        <AlertDescription>
+          {error instanceof Error ? error.message : "Failed to load the network plan"}
+        </AlertDescription>
+      </Alert>
+    );
+  }
 
   return (
     <Card>

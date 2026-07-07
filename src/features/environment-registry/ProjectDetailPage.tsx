@@ -4,6 +4,7 @@ import { useQueries } from "@tanstack/react-query";
 import { ArrowLeft, Download } from "lucide-react";
 import Link from "next/link";
 
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -39,6 +40,17 @@ export function ProjectDetailPage({ projectName }: Props) {
         <Skeleton className="h-8 w-64" />
         <Skeleton className="h-60 rounded-xl" />
       </div>
+    );
+  }
+
+  const error = slotsQ.error || targetsQ.error;
+  if (error) {
+    return (
+      <Alert variant="destructive">
+        <AlertDescription>
+          {error instanceof Error ? error.message : "Failed to load project slots"}
+        </AlertDescription>
+      </Alert>
     );
   }
 
