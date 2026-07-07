@@ -72,6 +72,11 @@ the gate; its CI step is wired but disabled pending nimbus GAP-014.
   `<Name>Page.tsx`, `__tests__/`); route wrappers at `src/app/<route>/page.tsx`
   are thin, alias the feature import, and name their default export with the
   `Page` suffix.
+- **Convention scope (GAP-001, decided 2026-07-06)**: the module convention
+  binds new routes and any route being **materially changed**. Routes that
+  predate the convention (the inline implementations under `src/app/`) are
+  **grandfathered as-is**; migrate a grandfathered route to a feature module
+  when it is next materially touched — never as bulk churn.
 - **Honest degradation**: never render fabricated values (a $0 for a provider
   whose cost API is unsupported, a client-computed next-run the engine does
   not store). Missing data gets an explicit unknown/unsupported state, and
