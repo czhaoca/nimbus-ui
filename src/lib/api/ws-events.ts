@@ -1,5 +1,5 @@
 /**
- * /ws event types — hand-mirrors the committed contract `docs/ws-events.json`
+ * /ws event types — hand-mirrors the committed contract `contracts/ws-events.json`
  * (#245/#248; source models: engine/nimbus/domains/ws/events.py). The catalog
  * has no TS codegen yet, so keep this file 1:1 with the artifact; the
  * backend's produced-event tests pin the artifact to the producers.

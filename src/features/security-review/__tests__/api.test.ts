@@ -11,7 +11,7 @@ afterEach(() => {
 });
 
 function envelope(data: unknown) {
-  return { status: "success", message: "", data, action_log_id: 7 };
+  return { status: "success", message: "", data, action_log_id: "log-7" };
 }
 
 function mockFetch(status: number, body: unknown) {
