@@ -4021,6 +4021,9 @@ export interface paths {
         /**
          * Sonarqube Start
          * @description Start the on-demand scanner (idempotent — running/starting is a 200 no-op).
+         *
+         *     ``holder`` registers a lifecycle lease (ADR-0009); holder-less callers get
+         *     an anonymous legacy lease. Additive: the request body is unchanged.
          */
         post: operations["sonarqube_start_api_v1_services_sonarqube_start_post"];
         delete?: never;
@@ -4060,7 +4063,11 @@ export interface paths {
         put?: never;
         /**
          * Sonarqube Stop
-         * @description Stop the scanner container on its registry-assigned target.
+         * @description Lease-gated stop — truly stops only at zero live leases (ADR-0009).
+         *
+         *     ``holder`` releases that caller's lease; may return ``state: "up"`` with
+         *     the live ``holders`` count when others still hold. ``force=true`` clears
+         *     all leases and stops unconditionally (admin escape hatch).
          */
         post: operations["sonarqube_stop_api_v1_services_sonarqube_stop_post"];
         delete?: never;
@@ -14543,7 +14550,9 @@ export interface operations {
     };
     sonarqube_start_api_v1_services_sonarqube_start_post: {
         parameters: {
-            query?: never;
+            query?: {
+                holder?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -14612,7 +14621,10 @@ export interface operations {
     };
     sonarqube_stop_api_v1_services_sonarqube_stop_post: {
         parameters: {
-            query?: never;
+            query?: {
+                holder?: string | null;
+                force?: boolean;
+            };
             header?: never;
             path?: never;
             cookie?: never;
