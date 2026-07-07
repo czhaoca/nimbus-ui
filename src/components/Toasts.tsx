@@ -23,11 +23,3 @@ export function showToast(message: string, type: ToastType = "info") {
       toast.info(message);
   }
 }
-
-/**
- * @deprecated The Toaster is now rendered in AppShell via Sonner.
- * This component is kept only for backward compatibility with imports.
- */
-export function ToastContainer() {
-  return null;
-}
