@@ -48,3 +48,6 @@ secrets/
 **/ssh-keys/
 *.db
 # --- end repo-privacy-kit block ---
+
+# alignment-cleanup session state (local-only)
+.claude/alignment-cleanup-state.json

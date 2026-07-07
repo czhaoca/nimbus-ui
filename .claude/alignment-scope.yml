@@ -1,0 +1,73 @@
+version: 1
+
+# Bootstrapped by /alignment-cleanup 2026-07-06 (Node/TypeScript template,
+# tailored to nimbus-ui). Review and tune; only categories: is required.
+
+categories:
+  - name: features
+    path: src/features
+    type: directory_per_item
+    checks: [tests, lint, file_size]
+  - name: app_routes
+    path: src/app
+    type: directory_per_item
+    checks: [lint, file_size]
+  - name: components
+    path: src/components
+    type: file_per_item
+    pattern: "*.tsx"
+    checks: [lint, file_size]
+  - name: lib
+    path: src/lib
+    type: file_per_item
+    pattern: "**/*.ts"
+    exclude: [api/schema.d.ts]   # vendored contract — generated, size-exempt
+    checks: [tests, lint, file_size]
+  - name: root_docs
+    path: .
+    type: file_per_item
+    pattern: "*.md"
+    checks: [staleness, decision_status, broken_links, implementation_coverage]
+
+trackers:
+  gaps: REQUIREMENT_GAPS.md   # auto-created on first architectural decision
+  # adr_dir intentionally unset: decision records live in the backend repo
+  # (czhaoca/nimbus design/brainstorms/), per AGENTS.md "Work-Order Queue".
+
+issues:
+  labels: [cleanup-alignment]
+  work_order_label: work-order
+  # drift_epic unset → per-round default alignment-drift-<date>
+  body_sections:
+    - "## Decision points"
+    - "## Acceptance criteria"
+    - "## Verification commands"
+    - "## Files / locations to touch"
+    - "## Existing patterns to mirror"
+
+verify:
+  lint: "pnpm lint"
+  test: "pnpm test"
+  # Full pre-commit gate per AGENTS.md adds typecheck + build:
+  # pnpm test && pnpm typecheck && pnpm lint && pnpm build
+
+practices:
+  max_file_lines: 700          # repo reality: page components run 300–650
+  max_doc_age_days: 180
+  require_test_per_module: true
+
+governance:
+  isolation:
+    - {rule: no-hand-edit-vendored-schema, scope: "src/lib/api/schema.d.ts",
+       detail: "never hand-edit; refresh only via pnpm sync-contract as a deliberate contract bump (schema + nimbusContract pin together)"}
+    - {rule: contract-only, scope: "src/**",
+       detail: "all engine calls via the typed /api/v1 client; the legacy unversioned /api alias is never referenced"}
+  api:
+    surface: none   # this repo CONSUMES the nimbus contract; it exposes no API of its own.
+                    # Consumed-contract freshness is checked by pnpm check-contract; drift is
+                    # a deliberate-bump work order, never a silent mid-feature re-sync.
+  push: {default_branch: main, remote: origin, force_commit_with_qa: false}
+  ci: {lenient: true, note: "Woodpecker reports via commit status; pending/empty is a note, not a blocker"}
+
+max_rounds: 5
+exit_when_clean: true
