@@ -17,6 +17,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
+import { SonarServiceCard } from "@/features/services/SonarServiceCard";
 
 interface SystemInfo {
   app_name: string;
@@ -125,6 +126,8 @@ export default function SystemPage() {
           </Card>
         </div>
       )}
+
+      <div className="mb-6"><SonarServiceCard /></div>
 
       {/* Database tables */}
       {tableEntries.length > 0 && (
