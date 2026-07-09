@@ -17,6 +17,16 @@ categories:
     type: file_per_item
     pattern: "**/*.tsx"   # recursive since #22 — the 700-line cap binds nested ui/ too
     checks: [lint, file_size]
+  - name: hooks          # added in #24 (G4) — owner-decided tests-inclusive coverage
+    path: src/hooks
+    type: file_per_item
+    pattern: "*.ts"
+    checks: [tests, lint, file_size]
+  - name: providers      # added in #24 (G4) — owner-decided tests-inclusive coverage
+    path: src/providers
+    type: file_per_item
+    pattern: "*.tsx"
+    checks: [tests, lint, file_size]
   - name: lib
     path: src/lib
     type: file_per_item
