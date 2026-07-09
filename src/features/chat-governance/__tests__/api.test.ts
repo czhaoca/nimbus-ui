@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { setAuthToken } from "@/lib/api/client";
 
-import { fetchApprovals } from "../api";
+import { fetchApprovals, fetchChannels, fetchRole } from "../api";
 
 // Request/fetch shims for the at-import captures live in vitest.setup.ts.
 
@@ -65,5 +65,53 @@ describe("fetchApprovals", () => {
     mockFetch(403, { detail: "Insufficient role" });
 
     await expect(fetchApprovals()).rejects.toThrow("Insufficient role");
+  });
+});
+
+const CHANNELS = {
+  feed_channel_id: "123456789",
+  briefing_channel_id: null,
+  incidents_channel_id: null,
+  approvals_channel_id: null,
+  provider_filter: "",
+  env_filter: "prod",
+};
+
+describe("fetchChannels", () => {
+  it("GETs /api/v1/chat/channels/{platform} and returns the config", async () => {
+    const fetchMock = mockFetch(200, CHANNELS);
+
+    const result = await fetchChannels("discord");
+
+    expect(result.feed_channel_id).toBe("123456789");
+    expect(result.briefing_channel_id).toBeNull();
+    const req = requestOf(fetchMock);
+    expect(req.method).toBe("GET");
+    expect(new URL(req.url).pathname).toBe("/api/v1/chat/channels/discord");
+  });
+});
+
+describe("fetchRole", () => {
+  it("GETs /api/v1/chat/roles/{platform}/{platform_user_id}", async () => {
+    const fetchMock = mockFetch(200, {
+      platform: "discord",
+      platform_user_id: "u-42",
+      role: "operator",
+    });
+
+    const result = await fetchRole("discord", "u-42");
+
+    expect(result.role).toBe("operator");
+    expect(new URL(requestOf(fetchMock).url).pathname).toBe(
+      "/api/v1/chat/roles/discord/u-42",
+    );
+  });
+
+  it("surfaces the operator gate's literal 403 detail", async () => {
+    mockFetch(403, { detail: "Insufficient role" });
+
+    await expect(fetchRole("discord", "u-42")).rejects.toThrow(
+      "Insufficient role",
+    );
   });
 });
