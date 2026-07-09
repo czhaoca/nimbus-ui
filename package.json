@@ -12,7 +12,7 @@
     "test:e2e:update": "playwright test --update-snapshots",
     "typecheck": "tsc --noEmit",
     "sync-contract": "cp ../nimbus/clients/ts/src/schema.d.ts src/lib/api/schema.d.ts",
-    "check-contract": "if [ -f ../nimbus/clients/ts/src/schema.d.ts ]; then diff -q ../nimbus/clients/ts/src/schema.d.ts src/lib/api/schema.d.ts; else echo 'backend checkout absent - vendored schema is authoritative (pinned contract 1.0.0)'; fi"
+    "check-contract": "if [ -f ../nimbus/clients/ts/src/schema.d.ts ]; then diff -q ../nimbus/clients/ts/src/schema.d.ts src/lib/api/schema.d.ts; else echo \"backend checkout absent - vendored schema is authoritative (pinned contract $(node -p 'require(\"./package.json\").nimbusContract'))\"; fi"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.95.2",
@@ -51,5 +51,5 @@
     "typescript": "^5",
     "vitest": "^4.1.9"
   },
-  "nimbusContract": "1.0.0"
+  "nimbusContract": "1.1.0"
 }

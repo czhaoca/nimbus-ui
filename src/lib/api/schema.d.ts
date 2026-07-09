@@ -4041,7 +4041,9 @@ export interface paths {
         };
         /**
          * Sonarqube Status
-         * @description stopped | starting | up — 'up' proxies SonarQube's /api/system/status.
+         * @description stopped | starting | up | crashed — 'up' proxies SonarQube's
+         *     /api/system/status; 'crashed' means the container exists but is
+         *     exited/dead while the probe is down, with best-effort exit detail (#291).
          */
         get: operations["sonarqube_status_api_v1_services_sonarqube_status_get"];
         put?: never;
