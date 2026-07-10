@@ -16,6 +16,7 @@ const {
   useProviderStatusMock,
   getPrefsMock,
   savePrefsMock,
+  getActivityFeedMock,
 } = vi.hoisted(() => ({
   useProvidersMock: vi.fn(),
   useResourcesMock: vi.fn(),
@@ -26,6 +27,7 @@ const {
   useProviderStatusMock: vi.fn(),
   getPrefsMock: vi.fn(),
   savePrefsMock: vi.fn(),
+  getActivityFeedMock: vi.fn(),
 }));
 
 vi.mock("@/lib/hooks/useApi", () => ({
@@ -42,6 +44,7 @@ vi.mock("@/lib/api/client", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/api/client")>()),
   getDashboardPreferences: getPrefsMock,
   saveDashboardPreferences: savePrefsMock,
+  getActivityFeed: getActivityFeedMock,
 }));
 
 vi.mock("@/components/SpendingChart", () => ({
@@ -71,6 +74,12 @@ beforeEach(() => {
   useProviderStatusMock.mockReturnValue({ data: { providers: [] } });
   getPrefsMock.mockResolvedValue(null);
   savePrefsMock.mockImplementation(async (p: unknown) => p);
+  getActivityFeedMock.mockResolvedValue({
+    total: 0,
+    page: 1,
+    per_page: 8,
+    items: [],
+  });
 });
 
 afterEach(() => {
@@ -88,7 +97,11 @@ describe("DashboardPage", () => {
     expect(screen.getByText("Budget Status")).toBeDefined();
     expect(screen.getByText("spending-chart-stub")).toBeDefined();
     expect(screen.getByText("Recent Activity")).toBeDefined();
-    expect(screen.getByText("No recent activity recorded.")).toBeDefined();
+    // The activity widget settles its feed query before the honest empty
+    // state appears (#29 rebuilt it on /api/v1/activity).
+    expect(
+      await screen.findByText("No recent activity recorded."),
+    ).toBeDefined();
     expect(screen.getByText("Notifications")).toBeDefined();
     expect(screen.getByText("No notifications.")).toBeDefined();
     expect(screen.getByText("No providers configured.")).toBeDefined();

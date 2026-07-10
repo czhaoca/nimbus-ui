@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { api, setAuthToken, listProviders, login } from "../client";
+import { api, setAuthToken, listProviders, login, getActivityFeed } from "../client";
 
 // Request/fetch shims for the at-import captures live in vitest.setup.ts.
 
@@ -90,5 +90,33 @@ describe("typed client error paths", () => {
     const { response } = await api.GET("/api/v1/auth/me");
 
     expect(response.status).toBe(401);
+  });
+});
+
+describe("activity feed envelope (nimbus-ui#29)", () => {
+  // /api/v1/activity returns {total, page, per_page, items} — the engine
+  // envelope (activity.py::get_activity_feed lines 74-79), not a bare array.
+  it("resolves the engine envelope and exposes items", async () => {
+    mockFetch(200, {
+      total: 1,
+      page: 1,
+      per_page: 8,
+      items: [
+        {
+          id: "log-1",
+          type: "audit",
+          summary: "start on i-abc",
+          timestamp: "2026-07-09T00:00:00+00:00",
+          source: "audit",
+          details: { action_type: "start", status: "success", initiated_by: "cli" },
+        },
+      ],
+    });
+
+    const feed = await getActivityFeed({ per_page: 8 });
+
+    expect(feed.total).toBe(1);
+    expect(feed.items).toHaveLength(1);
+    expect(feed.items[0].summary).toBe("start on i-abc");
   });
 });

@@ -288,12 +288,22 @@ export interface ActivityItem {
   source: "audit" | "webhook" | string;
   details: Record<string, unknown>;
 }
+// /api/v1/activity is untyped in the vendored schema; this DEC-4 shim
+// mirrors activity.py::get_activity_feed — envelope lines 74-79, audit
+// items 29-42, webhook items 51-65 (nimbus-ui#29).
+export interface ActivityFeedResponse {
+  total: number;
+  page: number;
+  per_page: number;
+  items: ActivityItem[];
+}
+
 export const getActivityFeed = (params?: {
   source?: "audit" | "webhook";
   page?: number;
   per_page?: number;
 }) =>
-  unwrap<ActivityItem[]>(
+  unwrap<ActivityFeedResponse>(
     api.GET("/api/v1/activity", { params: { query: params ?? {} } }),
   );
 

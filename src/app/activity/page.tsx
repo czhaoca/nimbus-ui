@@ -32,11 +32,12 @@ export default function ActivityPage() {
 
   useEffect(() => {
     setLoading(true);
-    // /api/v1/activity merges audit-log and webhook events into one feed.
+    // /api/v1/activity merges audit-log and webhook events into one feed,
+    // wrapped in the {total, page, per_page, items} envelope.
     getActivityFeed(
       filterSource === "all" ? {} : { source: filterSource as "audit" | "webhook" },
     )
-      .then(setItems)
+      .then((feed) => setItems(feed.items))
       .catch((e) => setError((e as Error).message))
       .finally(() => setLoading(false));
   }, [filterSource]);
