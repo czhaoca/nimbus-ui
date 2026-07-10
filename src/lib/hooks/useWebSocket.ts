@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { showToast } from "@/components/Toasts";
 
+import { pushIncident } from "@/lib/hooks/incidentFeed";
 import type { WsEvent } from "@/lib/api/ws-events";
 
 /**
@@ -45,6 +46,9 @@ export function useWebSocket() {
               } else {
                 showToast(`Recovered: ${name}`, "success");
               }
+              // Additive (#30): incidents also land in the session feed so
+              // they outlive the toast; resource_change stays feed-free.
+              pushIncident(data);
               break;
             }
             case "pong":

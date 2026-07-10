@@ -103,7 +103,9 @@ describe("DashboardPage", () => {
       await screen.findByText("No recent activity recorded."),
     ).toBeDefined();
     expect(screen.getByText("Notifications")).toBeDefined();
-    expect(screen.getByText("No notifications.")).toBeDefined();
+    // #30 rebuilt the widget as a session-scoped WS incident feed; the
+    // store starts empty, so the honest empty state renders synchronously.
+    expect(screen.getByText("No incidents this session.")).toBeDefined();
     expect(screen.getByText("No providers configured.")).toBeDefined();
     expect(screen.getByText(/no resources found/i)).toBeDefined();
   });

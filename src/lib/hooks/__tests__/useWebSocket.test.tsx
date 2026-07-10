@@ -1,8 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, renderHook } from "@testing-library/react";
+import { act, cleanup, renderHook } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { useWebSocket } from "../useWebSocket";
+import { resetIncidentFeed, useIncidentFeed } from "../incidentFeed";
 import { showToast } from "@/components/Toasts";
 
 vi.mock("@/components/Toasts", () => ({
@@ -47,6 +48,7 @@ describe("useWebSocket incident handling", () => {
     // RTL auto-cleanup needs test.globals; with explicit vitest imports the
     // unmount must be manual or hook trees leak across tests.
     cleanup();
+    resetIncidentFeed();
     vi.unstubAllGlobals();
     vi.clearAllMocks();
   });
@@ -136,5 +138,40 @@ describe("useWebSocket incident handling", () => {
 
     expect(() => fire({ type: "pong" })).not.toThrow();
     expect(showToast).not.toHaveBeenCalled();
+  });
+
+  it("incident events land in the session incident feed (#30 WS-reach pin)", () => {
+    renderHook(() => useWebSocket(), { wrapper });
+    const feed = renderHook(() => useIncidentFeed());
+
+    act(() =>
+      fire({
+        type: "incident",
+        action: "health_failure",
+        resource_id: "r-7",
+        provider_id: "p-1",
+      }),
+    );
+
+    expect(feed.result.current).toHaveLength(1);
+    expect(feed.result.current[0].event.resource_id).toBe("r-7");
+    // The toast contract is unchanged — the feed is additive.
+    expect(showToast).toHaveBeenCalledTimes(1);
+  });
+
+  it("resource_change events never reach the incident feed", () => {
+    renderHook(() => useWebSocket(), { wrapper });
+    const feed = renderHook(() => useIncidentFeed());
+
+    act(() =>
+      fire({
+        type: "resource_change",
+        action: "stop",
+        resource_id: "r-8",
+        provider_id: "p-1",
+      }),
+    );
+
+    expect(feed.result.current).toHaveLength(0);
   });
 });
