@@ -8,10 +8,11 @@
     "start": "next start",
     "lint": "next lint",
     "test": "vitest run",
-    "test:e2e": "playwright test",
+    "test:e2e": "playwright test --project=chromium-smoke --project=chromium-visual",
     "test:e2e:smoke": "playwright test --project=chromium-smoke",
     "test:e2e:visual": "playwright test --project=chromium-visual",
-    "test:e2e:update": "playwright test --update-snapshots",
+    "test:e2e:engine": "playwright test --project=chromium-engine",
+    "test:e2e:update": "playwright test --project=chromium-visual --update-snapshots",
     "typecheck": "tsc --noEmit",
     "sync-contract": "cp ../nimbus/clients/ts/src/schema.d.ts src/lib/api/schema.d.ts",
     "check-contract": "if [ -f ../nimbus/clients/ts/src/schema.d.ts ]; then diff -q ../nimbus/clients/ts/src/schema.d.ts src/lib/api/schema.d.ts; else echo \"backend checkout absent - vendored schema is authoritative (pinned contract $(node -p 'require(\"./package.json\").nimbusContract'))\"; fi"

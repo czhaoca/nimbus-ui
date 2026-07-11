@@ -47,6 +47,14 @@ export default defineConfig({
       testMatch: /e2e\/visual\/.*\.spec\.ts/,
       use: { ...devices["Desktop Chrome"] },
     },
+    {
+      // Seed-tolerant specs for the gated engine job (#33) — need a REAL
+      // demo-seeded engine behind the UI proxy; excluded from the local
+      // test:e2e default because they fail by design without one.
+      name: "chromium-engine",
+      testMatch: /e2e\/engine\/.*\.spec\.ts/,
+      use: { ...devices["Desktop Chrome"] },
+    },
   ],
   // With E2E_BASE_URL set the target is already serving (a governed env
   // or a CI service container) — booting a local dev server would test

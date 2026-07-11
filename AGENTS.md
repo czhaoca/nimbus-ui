@@ -62,8 +62,10 @@ Unit tests are Vitest 4 + jsdom + Testing Library (`vitest.config.ts`;
 jsdom over happy-dom was panel-decided in issue #3 — the component surface is
 portal/focus-heavy radix-ui). `vitest.setup.ts` carries load-bearing
 Request/fetch shims for openapi-fetch's at-import captures — do not remove
-them. `pnpm test:e2e` (Playwright) needs a running engine and is not part of
-the gate; its CI step is wired but disabled pending nimbus GAP-014.
+them. `pnpm test:e2e` (Playwright smoke + visual) runs hermetically against
+route-mocked fixtures — the `e2e-smoke` suite gates CI; visual baselines stay
+local-only. Only `pnpm test:e2e:engine` needs a real engine; its `e2e-gate`
+CI step is real but disabled pending nimbus GAP-014 (runbook: `e2e/README.md`).
 
 ## Feature Conventions
 

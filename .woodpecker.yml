@@ -46,21 +46,51 @@ steps:
       - corepack enable && corepack prepare pnpm@latest --activate
       - pnpm build
 
-  # Merge-gate e2e vs the published engine image (init + seed --demo + serve;
-  # see design/shared/dev-db-bootstrap.md in the backend repo). Wired but
-  # DISABLED pending nimbus GAP-014: the ghcr pull secret for
-  # ghcr.io/czhaoca/nimbus/engine is not staged for this repo yet. To enable,
-  # stage the pull secret and flip the `when` filter below to real events.
+  # Hermetic functional smoke (#31/#32/#33): DOM asserts against the
+  # mocked-engine harness — no engine, no baselines, platform-independent.
+  # Re-installs node_modules because this glibc (noble) image cannot load
+  # the musl-native binaries (@next/swc, lightningcss) the alpine install
+  # step produced; later steps no longer read node_modules.
+  - name: e2e-smoke
+    image: mcr.microsoft.com/playwright:v1.58.2-noble
+    environment:
+      NODE_OPTIONS: "--max-old-space-size=1536"
+    commands:
+      - corepack enable && corepack prepare pnpm@latest --activate
+      - pnpm install --frozen-lockfile
+      - pnpm test:e2e:smoke
+
+  # Demo-seeded engine sidecar for the merge gate: ENGINE_IMAGE (formerly a
+  # declared-and-unused env var) is now genuinely consumed as this step's
+  # image; bootstrap per the backend's design/shared/dev-db-bootstrap.md.
+  # Same GAP-014 false-gate as e2e-gate below — flip both together.
+  - name: engine
+    image: ghcr.io/czhaoca/nimbus/engine:latest
+    detach: true
+    commands:
+      - nimbus db init
+      - nimbus db seed --demo
+      - nimbus serve
+    when:
+      - evaluate: "false"
+
+  # Merge-gate e2e vs the published engine image — REAL but CI-UNVERIFIED:
+  # the constant-false filter keeps it skipped until the owner stages the
+  # repo-scoped ghcr pull secret (nimbus GAP-014) and flips both `when`
+  # filters to real events (procedure: e2e/README.md "Enabling the engine
+  # gate"). The UI dev server boots in-step (webServer) with its rewrite
+  # proxy pointed at the engine sidecar; specs are the seed-tolerant
+  # e2e/engine suite. Expect a first-run fix pass once flipped.
   - name: e2e-gate
     image: mcr.microsoft.com/playwright:v1.58.2-noble
     environment:
-      ENGINE_IMAGE: ghcr.io/czhaoca/nimbus/engine:latest
+      NODE_OPTIONS: "--max-old-space-size=1536"
+      NIMBUS_API_URL: http://engine:8000
     commands:
       - corepack enable && corepack prepare pnpm@latest --activate
-      - pnpm test:e2e
+      - pnpm install --frozen-lockfile
+      - pnpm test:e2e:engine
     when:
-      # GAP-014 guard: constant-false expression skips this step on every
-      # run. Replace with an event filter once the pull secret is staged.
       - evaluate: "false"
 
   # Publish ghcr.io/czhaoca/nimbus-ui on main pushes (#252): the backend

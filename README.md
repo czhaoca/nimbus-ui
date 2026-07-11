@@ -36,7 +36,7 @@ conventions, privacy rules).
 pnpm install
 NIMBUS_API_URL=http://localhost:8000 pnpm dev   # server-side /api proxy target
 pnpm typecheck && pnpm lint && pnpm build
-pnpm test:e2e   # Playwright (visual); needs a running engine
+pnpm test:e2e   # Playwright smoke + visual — hermetic, no engine needed
 ```
 
 The API is consumed exclusively through the server-side rewrite proxy
