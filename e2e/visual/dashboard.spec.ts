@@ -1,24 +1,26 @@
 import { test, expect } from "@playwright/test";
 
+import {
+  expectSeededTheme,
+  mockEngine,
+  seedTheme,
+  type SeededTheme,
+} from "../support/harness";
+
+// #31: both themes run on the hermetic harness — engine mocked, auth 200,
+// WS off the wire — and each shot is guarded by an <html>-class assert so
+// a silently-unapplied theme can never freeze into a baseline again.
 test.describe("Dashboard visual regression", () => {
-  test.beforeEach(async ({ page }) => {
-    await page.goto("/");
-    await page.waitForLoadState("networkidle");
-  });
-
-  test("light theme", async ({ page }) => {
-    await page.emulateMedia({ colorScheme: "light" });
-    await expect(page).toHaveScreenshot("dashboard-light.png", {
-      maxDiffPixelRatio: 0.01,
-      fullPage: true,
+  for (const theme of ["light", "dark"] as SeededTheme[]) {
+    test(`${theme} theme`, async ({ page }) => {
+      await mockEngine(page);
+      await seedTheme(page, theme);
+      await page.goto("/");
+      await page.waitForLoadState("networkidle");
+      await expectSeededTheme(page, theme);
+      await expect(page).toHaveScreenshot(`dashboard-${theme}.png`, {
+        fullPage: true,
+      });
     });
-  });
-
-  test("dark theme", async ({ page }) => {
-    await page.emulateMedia({ colorScheme: "dark" });
-    await expect(page).toHaveScreenshot("dashboard-dark.png", {
-      maxDiffPixelRatio: 0.01,
-      fullPage: true,
-    });
-  });
+  }
 });

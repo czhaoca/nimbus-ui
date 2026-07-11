@@ -11,6 +11,13 @@
 # testing
 /coverage
 
+# playwright (visual baselines are local-only while visual is not CI-gating;
+# a future visual-gating ticket un-ignores *-snapshots/ and commits Linux
+# baselines — see e2e/README.md)
+e2e/**/*-snapshots/
+playwright-report/
+test-results/
+
 # next.js
 /.next/
 /out/

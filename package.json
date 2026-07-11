@@ -9,6 +9,8 @@
     "lint": "next lint",
     "test": "vitest run",
     "test:e2e": "playwright test",
+    "test:e2e:smoke": "playwright test --project=chromium-smoke",
+    "test:e2e:visual": "playwright test --project=chromium-visual",
     "test:e2e:update": "playwright test --update-snapshots",
     "typecheck": "tsc --noEmit",
     "sync-contract": "cp ../nimbus/clients/ts/src/schema.d.ts src/lib/api/schema.d.ts",
