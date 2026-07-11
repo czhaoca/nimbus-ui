@@ -50,14 +50,21 @@ steps:
   # mocked-engine harness — no engine, no baselines, platform-independent.
   # Re-installs node_modules because this glibc (noble) image cannot load
   # the musl-native binaries (@next/swc, lightningcss) the alpine install
-  # step produced; later steps no longer read node_modules.
+  # step produced; later steps no longer read node_modules. Serves the
+  # build step's standalone output instead of `next dev` — a dev-mode
+  # cold compile is memory-hungry and this runner LXC OOM-kills (see the
+  # build step's NODE_OPTIONS comment); the asset copies are the
+  # documented `output: standalone` deploy recipe.
   - name: e2e-smoke
     image: mcr.microsoft.com/playwright:v1.58.2-noble
     environment:
       NODE_OPTIONS: "--max-old-space-size=1536"
+      E2E_WEB_SERVER: standalone
     commands:
       - corepack enable && corepack prepare pnpm@latest --activate
       - pnpm install --frozen-lockfile
+      - cp -r public .next/standalone/
+      - cp -r .next/static .next/standalone/.next/
       - pnpm test:e2e:smoke
 
   # Demo-seeded engine sidecar for the merge gate: ENGINE_IMAGE (formerly a

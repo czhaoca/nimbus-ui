@@ -32,6 +32,11 @@ pnpm test:e2e:engine   # engine-backed specs — needs a real engine, see below
 pnpm exec playwright install chromium   # once, if browsers are absent
 ```
 
+Locally the config boots `next dev` automatically. In CI the smoke step
+sets `E2E_WEB_SERVER=standalone` to serve the build step's prebuilt
+output instead (`node .next/standalone/server.js` after the standalone
+asset copies) — no cold compile, small memory footprint on the runner.
+
 `E2E_BASE_URL` targets an already-running instance (a governed URL from
 the environment registry — never hardcode one) and skips the local
 `webServer` boot:

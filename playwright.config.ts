@@ -12,6 +12,9 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
+  // The CI runner is a small LXC: parallel chromium workers compete for
+  // memory with the app server and flake under pressure.
+  workers: process.env.CI ? 2 : undefined,
   reporter: [["html", { outputFolder: "./playwright-report", open: "never" }]],
   expect: {
     // Global screenshot policy (#31, hoisted from per-shot options):
@@ -58,15 +61,27 @@ export default defineConfig({
   ],
   // With E2E_BASE_URL set the target is already serving (a governed env
   // or a CI service container) — booting a local dev server would test
-  // the wrong thing.
+  // the wrong thing. E2E_WEB_SERVER=standalone serves the prebuilt
+  // output (node .next/standalone/server.js — assets must be copied in
+  // first, see .woodpecker.yml e2e-smoke) instead of compiling in `next
+  // dev`; the CI smoke step uses it because the runner LXC has a
+  // documented OOM history and a dev-mode cold compile is both slow and
+  // memory-hungry. e2e-gate stays on `pnpm dev`: standalone bakes
+  // rewrites at build time, and the gate needs runtime NIMBUS_API_URL.
   ...(process.env.E2E_BASE_URL
     ? {}
     : {
         webServer: {
-          command: "pnpm dev",
+          command:
+            process.env.E2E_WEB_SERVER === "standalone"
+              ? // HOSTNAME override: in a container HOSTNAME is the
+                // container id and the standalone server binds it —
+                // localhost polling then never connects.
+                "HOSTNAME=127.0.0.1 node .next/standalone/server.js"
+              : "pnpm dev",
           url: "http://localhost:3000",
           reuseExistingServer: !process.env.CI,
-          timeout: 30_000,
+          timeout: 120_000,
         },
       }),
 });
