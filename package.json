@@ -54,5 +54,5 @@
     "typescript": "^5",
     "vitest": "^4.1.9"
   },
-  "nimbusContract": "1.5.0"
+  "nimbusContract": "1.6.0"
 }
