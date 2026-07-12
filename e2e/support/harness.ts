@@ -7,6 +7,7 @@
 import { expect, type Page } from "@playwright/test";
 
 import {
+  ACTION_LOGS,
   ACTIVITY_FEED,
   BUDGET_STATUSES,
   DASHBOARD_PREFERENCES,
@@ -15,6 +16,8 @@ import {
   PROVIDERS,
   PROVIDER_RESILIENCE,
   RESOURCES,
+  RESOURCE_DEPENDENCIES,
+  RESOURCE_DETAIL,
   SPENDING_HISTORY,
 } from "./fixtures";
 
@@ -40,10 +43,28 @@ export async function mockEngine(page: Page): Promise<void> {
     }),
   );
 
-  await page.route("**/health", (route) => route.fulfill(json(HEALTH)));
+  // Exact-path probe match: the previous "**/health" glob also swallowed
+  // document navigations to nested /health routes (e.g. the
+  // /resources/{id}/health redirect page), fulfilling the page itself with
+  // probe JSON.
+  await page.route(/^https?:\/\/[^/]+\/health(\?.*)?$/, (route) =>
+    route.fulfill(json(HEALTH)),
+  );
   await page.route("**/api/v1/auth/me", (route) => route.fulfill(json(FIXTURE_USER)));
   await page.route("**/api/v1/providers", (route) => route.fulfill(json(PROVIDERS)));
   await page.route("**/api/v1/resources", (route) => route.fulfill(json(RESOURCES)));
+  // Detail routes (#35): registered after the catch-all — Playwright matches
+  // last-registered-first, so these win; the list glob above has no trailing
+  // wildcard and never shadows them.
+  await page.route("**/api/v1/resources/res-0001", (route) =>
+    route.fulfill(json(RESOURCE_DETAIL)),
+  );
+  await page.route("**/api/v1/resources/res-0001/logs", (route) =>
+    route.fulfill(json(ACTION_LOGS)),
+  );
+  await page.route("**/api/v1/resources/res-0001/dependencies", (route) =>
+    route.fulfill(json(RESOURCE_DEPENDENCIES)),
+  );
   await page.route("**/api/v1/budget/status", (route) =>
     route.fulfill(json(BUDGET_STATUSES)),
   );

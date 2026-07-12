@@ -13,7 +13,9 @@ import type {
   ProviderStatus,
   SpendingHistoryEntry,
 } from "@/lib/api/client";
+import type { ResourceDependencies } from "@/lib/api/client";
 import type {
+  ActionLogEntry,
   BudgetStatus,
   HealthStatus,
   Provider,
@@ -107,6 +109,40 @@ export const RESOURCES: Resource[] = [
     last_seen_at: "2026-06-01T00:00:00Z",
   },
 ];
+
+// Detail-page fixtures (#35): the detail routes reuse res-0001 so the
+// dashboard link-through lands on fully-mocked data.
+export const RESOURCE_DETAIL: Resource = RESOURCES[0];
+
+export const ACTION_LOGS: ActionLogEntry[] = [
+  {
+    id: "act-0001",
+    resource_id: "res-0001",
+    action_type: "health_check",
+    status: "success",
+    initiated_by: "e2e-admin",
+    details: {},
+    created_at: "2026-06-30T14:05:00Z",
+  },
+  {
+    id: "act-0002",
+    resource_id: "res-0001",
+    action_type: "stop",
+    status: "failed",
+    initiated_by: "e2e-admin",
+    details: { error: "probe timeout (fixture)" },
+    created_at: "2026-06-29T08:00:00Z",
+  },
+];
+
+// Edge types deliberately avoid "compute"/"vm": those strings already render
+// as resource_type values on the detail page and would break exact-text
+// smoke asserts.
+export const RESOURCE_DEPENDENCIES: ResourceDependencies = {
+  resource_id: "res-0001",
+  depends_on: [{ id: "dep-0001", target_id: "res-0002", type: "network" }],
+  depended_by: [{ id: "dep-0002", source_id: "res-0003", type: "storage" }],
+};
 
 export const BUDGET_STATUSES: BudgetStatus[] = [
   {

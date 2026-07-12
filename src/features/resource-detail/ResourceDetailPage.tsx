@@ -1,0 +1,181 @@
+"use client";
+
+import Link from "next/link";
+import { useQuery } from "@tanstack/react-query";
+import { AlertCircle } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { ProviderIcon, getProviderMeta } from "@/components/ProviderIcon";
+import { StatusBadge } from "@/components/StatusBadge";
+import { showToast } from "@/components/Toasts";
+import { useProviders, useResourceAction } from "@/lib/hooks/useApi";
+import { getActionLogs, getResource } from "./api";
+import type { ResourceAction } from "./types";
+import { ActionHistoryPanel } from "./panels/ActionHistoryPanel";
+import { DependenciesPanel } from "./panels/DependenciesPanel";
+import { LifecycleCostPanel } from "./panels/LifecycleCostPanel";
+import { PropertiesPanel } from "./panels/PropertiesPanel";
+import { TagsPanel } from "./panels/TagsPanel";
+
+/* Carried over UNCHANGED from the pre-migration inline page (#35): still
+   visible to every role and confirmed via native confirm(). The Sequence-30
+   ticket upgrades these to the house idiom (cosmetic gate + AlertDialog). */
+const ACTION_BUTTONS: {
+  action: ResourceAction;
+  label: string;
+  variant: "default" | "secondary" | "destructive" | "outline" | "ghost";
+  when?: string[];
+}[] = [
+  {
+    action: "start",
+    label: "Start",
+    variant: "default",
+    when: ["stopped"],
+  },
+  {
+    action: "stop",
+    label: "Stop",
+    variant: "outline",
+    when: ["running"],
+  },
+  {
+    action: "health_check",
+    label: "Health Check",
+    variant: "secondary",
+  },
+  {
+    action: "terminate",
+    label: "Terminate",
+    variant: "destructive",
+    when: ["running", "stopped"],
+  },
+];
+
+interface Props {
+  resourceId: string;
+}
+
+export function ResourceDetailPage({ resourceId }: Props) {
+  const { data: resource, isLoading, error } = useQuery({
+    queryKey: ["resource", resourceId],
+    queryFn: () => getResource(resourceId),
+    enabled: !!resourceId,
+  });
+
+  const { data: logs, isLoading: logsLoading, error: logsError } = useQuery({
+    queryKey: ["action-logs", resourceId],
+    queryFn: () => getActionLogs(resourceId),
+    enabled: !!resourceId,
+  });
+
+  const { data: providers } = useProviders();
+  const actionMut = useResourceAction();
+
+  const handleAction = (action: ResourceAction) => {
+    if (action === "terminate" && !confirm("Terminate this resource? This cannot be undone.")) {
+      return;
+    }
+    actionMut.mutate(
+      { id: resourceId, action },
+      {
+        onSuccess: (r) => showToast(`${r.action}: ${r.detail}`, "success"),
+        onError: (e) => showToast((e as Error).message, "error"),
+      },
+    );
+  };
+
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        <Skeleton className="h-4 w-32" />
+        <Skeleton className="h-8 w-64" />
+        <Skeleton className="h-48 rounded-xl" />
+        <Skeleton className="h-32 rounded-xl" />
+      </div>
+    );
+  }
+
+  if (error || !resource) {
+    return (
+      <div className="space-y-4">
+        <Link href="/" className="text-sm text-muted-foreground hover:text-foreground">
+          &larr; Back to Dashboard
+        </Link>
+        <Alert variant="destructive">
+          <AlertCircle className="size-4" />
+          <AlertDescription>
+            {(error as Error)?.message ?? "Resource not found."}
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
+
+  const provider = providers?.find((p) => p.id === resource.provider_id);
+  const providerMeta = provider ? getProviderMeta(provider.provider_type) : null;
+
+  return (
+    <div className="space-y-6">
+      {/* Breadcrumb — the dashboard is the resource list. */}
+      <Link
+        href="/"
+        className="inline-block text-sm text-muted-foreground hover:text-foreground"
+      >
+        &larr; Back to Dashboard
+      </Link>
+
+      {/* Header */}
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-lg font-semibold tracking-tight">
+            {resource.display_name || resource.external_id}
+          </h1>
+          <div className="flex flex-wrap items-center gap-3 mt-1 text-sm text-muted-foreground">
+            <StatusBadge status={resource.status} />
+            {provider && providerMeta && (
+              <span className="flex items-center gap-1.5">
+                <ProviderIcon type={provider.provider_type} size={16} />
+                {providerMeta.label}
+              </span>
+            )}
+            <span>{resource.resource_type}</span>
+            <span>{resource.provider_id}</span>
+          </div>
+        </div>
+
+        {/* Action buttons (pre-idiom, carried over — see ACTION_BUTTONS note) */}
+        <div className="flex gap-2">
+          {ACTION_BUTTONS.map((btn) => {
+            if (btn.when && !btn.when.includes(resource.status)) return null;
+            return (
+              <Button
+                key={btn.action}
+                variant={btn.variant}
+                size="sm"
+                disabled={actionMut.isPending}
+                onClick={() => handleAction(btn.action)}
+              >
+                {btn.label}
+              </Button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Single-scroll two-column layout (epic decision) */}
+      <div className="grid gap-6 lg:grid-cols-3">
+        <div className="space-y-6 lg:col-span-2">
+          <PropertiesPanel resource={resource} />
+          <DependenciesPanel resourceId={resourceId} />
+        </div>
+        <div className="space-y-6">
+          <LifecycleCostPanel resource={resource} />
+          <TagsPanel tags={resource.tags} />
+        </div>
+      </div>
+
+      <ActionHistoryPanel logs={logs} isLoading={logsLoading} error={logsError} />
+    </div>
+  );
+}

@@ -72,5 +72,14 @@ test.describe("Seeded-engine e2e", () => {
     await firstResourceLink.click();
     await expect(page).toHaveURL(/\/resources\/.+/);
     await expect(page.getByText(/demo-/).first()).toBeVisible();
+    // #35 hardening: the detail page must render real panel content, not
+    // just navigate — a Properties label plus a seeded demo-* display name
+    // in the page heading (seed-CONTRACT-tolerant: never exact values).
+    await expect(page.getByText("Properties", { exact: true })).toBeVisible({
+      timeout: 15_000,
+    });
+    await expect(
+      page.getByRole("heading", { level: 1 }).filter({ hasText: /demo-/ }),
+    ).toBeVisible();
   });
 });
