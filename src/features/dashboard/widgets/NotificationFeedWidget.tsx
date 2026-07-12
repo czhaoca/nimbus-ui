@@ -24,9 +24,12 @@ export function NotificationFeedWidget() {
       <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
         <Bell className="size-4 text-muted-foreground" /> Notifications
       </h3>
+      {/* Honest deferred-surface caption (#43): the engine's persisted
+          feed (GET /api/v1/notifications/feed, contract 1.6.0) exists but
+          is not consumed here yet — never claim it is impossible. */}
       <p className="text-muted-foreground text-xs mb-3">
-        Live incidents since page load — the engine keeps no notification
-        history.
+        Live incidents since page load — the engine&apos;s persisted
+        notification feed is not wired into this widget yet.
       </p>
 
       {incidents.length === 0 ? (

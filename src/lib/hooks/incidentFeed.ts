@@ -5,9 +5,11 @@ import type { WsIncidentEvent } from "@/lib/api/ws-events";
 /**
  * Session-scoped incident buffer (#30, DEC-A: module-level store).
  *
- * The engine keeps no notification history and exposes no notifications
- * REST endpoint, so this feed holds only incidents received over the live
- * WS connection — newest first, capped, gone on reload by design.
+ * Holds only incidents received over the live WS connection — newest
+ * first, capped, gone on reload by design. The engine's persisted
+ * notification feed (GET /api/v1/notifications/feed, contract 1.6.0) is
+ * not consumed by the UI yet (#43); when that wiring lands it belongs to
+ * the consuming widget, not this deliberately session-local store.
  */
 export interface IncidentFeedEntry {
   seq: number;

@@ -28,6 +28,14 @@ describe("NotificationFeedWidget", () => {
 
     expect(screen.getByText(/live incidents since page load/i)).toBeDefined();
     expect(screen.getByText("No incidents this session.")).toBeDefined();
+    // #43: the caption names the deferred persisted feed instead of the
+    // pre-1.6.0 claim that no history exists (that claim is now false).
+    expect(
+      screen.getByText(/persisted notification feed is not wired into this widget yet/i),
+    ).toBeDefined();
+    // Matcher deliberately broader than the retired phrase so the assert
+    // itself never carries the full false claim the repo grep bans.
+    expect(screen.queryByText(/keeps no notification/i)).toBeNull();
   });
 
   it("renders pushed incidents with action badges, newest first", () => {
