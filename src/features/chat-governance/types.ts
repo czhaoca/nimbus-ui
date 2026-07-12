@@ -1,69 +1,40 @@
 /**
- * Chat-governance types (#25).
- *
- * The /api/v1/chat/* responses are untyped in the vendored schema
- * ({[key: string]: unknown} — schema.d.ts:8427-8459), so per DEC-4 these
- * are hand-written shims citing the engine serializer they mirror. When
- * the backend types them in the contract, alias them like lib/types.
+ * Chat-governance types (#25) — aliases over the vendored /api/v1
+ * contract components since the chat responses were promoted to named
+ * schemas (#40). Semantic notes the shapes cannot carry stay here and
+ * cite the contract.
  */
 
-/**
- * One approval row — mirrors
- * engine/nimbus/domains/operations/chat_approvals.py::_item (lines 49-62):
- * the engine sends `approval_id` (the contract key) plus a legacy
- * duplicate `id`, and ISO datetime strings that may be null.
- */
-export interface ChatApproval {
-  approval_id: string;
-  id: string;
-  operation: string;
-  requested_by: string;
-  created_at: string | null;
-  expires_at: string | null;
-  status: string;
-}
+import type { components } from "@/lib/api/schema";
+
+type Schemas = components["schemas"];
 
 /**
- * GET /api/v1/chat/approvals envelope — `{items: [...]}` per
- * chat_approvals.py::list_approvals (line 216-223).
+ * One approval row. The contract keeps the legacy duplicate `id`
+ * alongside `approval_id` (the canonical key), and its ISO datetime
+ * strings are nullable.
  */
-export interface ApprovalsListResponse {
-  items: ChatApproval[];
-}
+export type ChatApproval = Schemas["ChatApprovalOut"];
+
+/** GET /api/v1/chat/approvals envelope. */
+export type ApprovalsListResponse = Schemas["ChatApprovalsListOut"];
 
 /**
- * Channel mappings for one platform — mirrors
- * engine/nimbus/domains/operations/chat_config.py::_serialize (lines
- * 42-58). The engine returns this same shape with nulls/empty strings
- * when the platform row is unconfigured — that is a normal state, not
- * an error.
+ * Channel mappings for one platform. The contract returns this same
+ * shape with nulls/empty strings when the platform row is unconfigured —
+ * a normal state, not an error. (The PUT response is the distinct
+ * ChatChannelsSavedOut: the same fields plus `status`.)
  */
-export interface ChatChannelsConfig {
-  feed_channel_id: string | null;
-  briefing_channel_id: string | null;
-  incidents_channel_id: string | null;
-  approvals_channel_id: string | null;
-  provider_filter: string;
-  env_filter: string;
-}
+export type ChatChannelsConfig = Schemas["ChatChannelsOut"];
 
 /**
- * One chat user's resolved Nimbus role — mirrors
- * engine/nimbus/domains/operations/chat_roles_api.py::get_chat_role
- * (lines 22-36). Unmapped users resolve to the "viewer" floor
- * (_chat_gates.py::resolve_platform_role, lines 43-50) — the API never
- * 404s, so a viewer result is not proof of an explicit mapping.
+ * One chat user's resolved Nimbus role. Unmapped users resolve to the
+ * "viewer" floor — the API never 404s, so a viewer result is not proof
+ * of an explicit mapping.
  */
-export interface ChatRoleMapping {
-  platform: string;
-  platform_user_id: string;
-  role: string;
-}
+export type ChatRoleMapping = Schemas["ChatRoleOut"];
 
-/**
- * Platforms with a registered chat sink —
- * engine/nimbus/services/chat_sinks/{discord,slack,synology,telegram,whatsapp}_feed.py.
- */
+/** Platforms with a registered chat sink (sink registry, not a response shape). */
 export const CHAT_PLATFORMS = [
   "discord",
   "slack",

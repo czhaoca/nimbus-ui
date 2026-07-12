@@ -6,8 +6,8 @@ export type { ResourceDependencies } from "@/lib/api/client";
 
 // Hand-typed (#37, DEC-4 unknown-response exception): GET
 // /api/v1/resources/{resource_id}/metrics is `unknown` in the vendored
-// schema. Mirrors the engine serializer at
-// engine/nimbus/domains/operations/analytics.py:125-155 (czhaoca/nimbus).
+// schema. Mirrors the engine serializer at czhaoca/nimbus
+// nimbus/domains/operations/analytics.py:125-155.
 // Metric columns are Float nullable=True (core/models/metrics.py), so null
 // means "not captured" — never coerce it to zero.
 export interface ResourceMetricPoint {

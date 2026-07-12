@@ -1,19 +1,14 @@
 /**
- * Services module types (#27).
- *
- * The /api/v1/services/* responses are untyped in the vendored schema,
- * so per DEC-4 this is a hand-written shim citing the engine serializer
- * it mirrors: engine/nimbus/services/sonarqube_lifecycle.py::
- * sonarqube_status (lines 185-204). `holders` is the live lease COUNT
- * (ADR-0009, lease.live_count); `detail` is present ONLY when
- * state === "crashed" (best-effort container exit info, #291).
+ * Services module types (#27) — aliases over the vendored /api/v1
+ * contract (SonarStatusOut; #40). `holders` is the live lease COUNT
+ * (ADR-0009). `detail` is best-effort container exit info present only
+ * when `state === "crashed"` — the contract types it optional and
+ * nullable, so always read it defensively.
  */
 
-export type SonarServiceState = "up" | "starting" | "crashed" | "stopped";
+import type { components } from "@/lib/api/schema";
 
-export interface SonarServiceStatus {
-  service: string;
-  state: SonarServiceState;
-  holders: number;
-  detail?: Record<string, unknown>;
-}
+export type SonarServiceStatus = components["schemas"]["SonarStatusOut"];
+
+/** The lifecycle state union rides the component. */
+export type SonarServiceState = SonarServiceStatus["state"];
