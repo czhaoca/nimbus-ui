@@ -34,12 +34,24 @@ export function useWebSocket() {
               queryClient.invalidateQueries({ queryKey: ["resources"] });
               queryClient.invalidateQueries({ queryKey: ["providers"] });
               queryClient.invalidateQueries({ queryKey: ["budget-status"] });
+              // Additive (#34): detail keys, so an open detail page refetches.
+              // The event carries no status — refetch is the designed pattern.
+              if (data.resource_id) {
+                queryClient.invalidateQueries({ queryKey: ["resource", data.resource_id] });
+                queryClient.invalidateQueries({ queryKey: ["action-logs", data.resource_id] });
+              }
               showToast(`Resource ${data.resource_id}: ${data.action}`, "info");
               break;
             case "incident": {
               queryClient.invalidateQueries({ queryKey: ["health"] });
               queryClient.invalidateQueries({ queryKey: ["providers"] });
               queryClient.invalidateQueries({ queryKey: ["provider-status"] });
+              // Additive (#34): a health incident also refreshes that
+              // resource's open detail page.
+              if (data.resource_id) {
+                queryClient.invalidateQueries({ queryKey: ["resource", data.resource_id] });
+                queryClient.invalidateQueries({ queryKey: ["action-logs", data.resource_id] });
+              }
               const name = data.display_name || data.resource_id;
               if (data.action === "health_failure") {
                 showToast(`Health failure: ${name}`, "error");

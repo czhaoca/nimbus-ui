@@ -174,4 +174,65 @@ describe("useWebSocket incident handling", () => {
 
     expect(feed.result.current).toHaveLength(0);
   });
+
+  function invalidatedKeys(): unknown[][] {
+    return invalidateSpy.mock.calls.map(
+      (c: unknown[]) => (c[0] as { queryKey: unknown[] }).queryKey,
+    );
+  }
+
+  it("resource_change also invalidates the detail keys (#34)", () => {
+    renderHook(() => useWebSocket(), { wrapper });
+
+    fire({
+      type: "resource_change",
+      action: "update",
+      resource_id: "r-9",
+      provider_id: "p-1",
+    });
+
+    const keys = invalidatedKeys();
+    expect(keys).toContainEqual(["resource", "r-9"]);
+    expect(keys).toContainEqual(["action-logs", "r-9"]);
+    // The list invalidations and the single info toast are unchanged.
+    expect(keys).toContainEqual(["resources"]);
+    expect(keys).toContainEqual(["providers"]);
+    expect(keys).toContainEqual(["budget-status"]);
+    expect(showToast).toHaveBeenCalledTimes(1);
+  });
+
+  it("incident with resource_id also invalidates the detail keys (#34)", () => {
+    renderHook(() => useWebSocket(), { wrapper });
+
+    act(() =>
+      fire({
+        type: "incident",
+        action: "health_failure",
+        resource_id: "r-4",
+        provider_id: "p-1",
+      }),
+    );
+
+    const keys = invalidatedKeys();
+    expect(keys).toContainEqual(["resource", "r-4"]);
+    expect(keys).toContainEqual(["action-logs", "r-4"]);
+    // The incident invalidations and the single toast are unchanged.
+    expect(keys).toContainEqual(["health"]);
+    expect(keys).toContainEqual(["providers"]);
+    expect(keys).toContainEqual(["provider-status"]);
+    expect(showToast).toHaveBeenCalledTimes(1);
+  });
+
+  it("events without resource_id never invalidate detail keys", () => {
+    renderHook(() => useWebSocket(), { wrapper });
+
+    fire({ type: "resource_change", action: "sweep", provider_id: "p-1" });
+    act(() =>
+      fire({ type: "incident", action: "health_recovery", provider_id: "p-1" }),
+    );
+
+    const heads = invalidatedKeys().map((k) => k[0]);
+    expect(heads).not.toContain("resource");
+    expect(heads).not.toContain("action-logs");
+  });
 });
