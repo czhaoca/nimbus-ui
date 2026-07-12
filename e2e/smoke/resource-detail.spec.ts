@@ -51,10 +51,11 @@ test.describe("Resource detail smoke", () => {
     await expect(page.getByRole("button", { name: "7d" })).toBeVisible();
 
     // The harness user is a viewer: the cosmetic operator gate (#36) must
-    // render zero action affordances.
+    // render zero action affordances, and no Edit affordance either (#38).
     await expect(page.getByRole("button", { name: "Stop" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Health Check" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Terminate" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Edit" })).toHaveCount(0);
   });
 
   test("operators see the status-driven action affordances", async ({
@@ -77,6 +78,32 @@ test.describe("Resource detail smoke", () => {
     await expect(page.getByRole("button", { name: "Health Check" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Terminate" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Start" })).toHaveCount(0);
+  });
+
+  test("operators edit the display name and the page re-renders it", async ({
+    page,
+  }) => {
+    await page.route("**/api/v1/auth/me", (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(OPERATOR_USER),
+      }),
+    );
+    await page.goto("/resources/res-0001");
+    await expect(page.getByRole("heading", { name: "demo-web-01" })).toBeVisible();
+
+    await page.getByRole("button", { name: "Edit" }).click();
+    const nameInput = page.getByLabel("Display name");
+    await expect(nameInput).toHaveValue("demo-web-01");
+    await nameInput.fill("demo-web-01-renamed");
+    await page.getByRole("button", { name: "Save changes" }).click();
+
+    // The stateful harness PUT persists the change; the success-path
+    // invalidation refetches and the header re-renders the new name.
+    await expect(
+      page.getByRole("heading", { name: "demo-web-01-renamed" }),
+    ).toBeVisible();
   });
 
   test("the dependencies sub-route redirects to the detail anchor", async ({

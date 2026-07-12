@@ -5,4 +5,5 @@ export {
   getResource,
   getResourceDependencies,
   getResourceMetrics,
+  updateResource,
 } from "@/lib/api/client";

@@ -4,6 +4,7 @@ import type {
   Provider,
   ProviderCreate,
   Resource,
+  ResourceUpdate,
   ActionResult,
   SyncResult,
   HealthStatus,
@@ -207,6 +208,15 @@ export const updateResourceTags = (id: string, tags: Record<string, unknown>) =>
     api.PUT("/api/v1/resources/{resource_id}/tags", {
       params: { path: { resource_id: id } },
       body: tags,
+    }),
+  );
+// Full resource update (#38) — fully typed end to end (ResourceUpdate →
+// ResourceOut), unlike the logs/metrics paths; no hand-typing needed.
+export const updateResource = (id: string, body: ResourceUpdate) =>
+  unwrap<Resource>(
+    api.PUT("/api/v1/resources/{resource_id}", {
+      params: { path: { resource_id: id } },
+      body,
     }),
   );
 export interface ResourceDependencies {

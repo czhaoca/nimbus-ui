@@ -14,6 +14,7 @@ const {
   listProvidersMock,
   getMeMock,
   performActionMock,
+  updateResourceMock,
 } = vi.hoisted(() => ({
   getResourceMock: vi.fn(),
   getActionLogsMock: vi.fn(),
@@ -23,6 +24,7 @@ const {
   listProvidersMock: vi.fn(),
   getMeMock: vi.fn(),
   performActionMock: vi.fn(),
+  updateResourceMock: vi.fn(),
 }));
 
 vi.mock("@/lib/api/client", async (importOriginal) => ({
@@ -35,6 +37,7 @@ vi.mock("@/lib/api/client", async (importOriginal) => ({
   listProviders: listProvidersMock,
   getMe: getMeMock,
   performAction: performActionMock,
+  updateResource: updateResourceMock,
 }));
 
 // ProviderIcon imports raw .svg as components via @svgr/webpack — a
@@ -272,6 +275,20 @@ describe("ResourceDetailPage", () => {
     expect(screen.queryByRole("button", { name: "Stop" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Health Check" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Terminate" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Edit" })).toBeNull();
+  });
+
+  it("opens the operator Edit dialog prefilled from the cached resource", async () => {
+    getMeMock.mockResolvedValue({ username: "unit-admin", role: "operator" });
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(await screen.findByRole("button", { name: "Edit" }));
+
+    expect(
+      (screen.getByLabelText("Display name") as HTMLInputElement).value,
+    ).toBe("unit-web-01");
+    expect(updateResourceMock).not.toHaveBeenCalled();
   });
 
   it("renders the status-driven action bar for operators", async () => {

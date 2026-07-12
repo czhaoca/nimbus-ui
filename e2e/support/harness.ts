@@ -57,9 +57,21 @@ export async function mockEngine(page: Page): Promise<void> {
   // Detail routes (#35): registered after the catch-all — Playwright matches
   // last-registered-first, so these win; the list glob above has no trailing
   // wildcard and never shadows them.
-  await page.route("**/api/v1/resources/res-0001", (route) =>
-    route.fulfill(json(RESOURCE_DETAIL)),
-  );
+  // #38: the detail route is stateful within a page context — PUT merges
+  // the update so the invalidation refetch (GET) sees it, letting the smoke
+  // assert a real re-render rather than a fulfilled echo. page.route matches
+  // regardless of method, so both verbs live in one handler. State resets
+  // with every mockEngine() call (per test), staying deterministic.
+  let detailState = { ...RESOURCE_DETAIL };
+  await page.route("**/api/v1/resources/res-0001", (route) => {
+    if (route.request().method() === "PUT") {
+      detailState = {
+        ...detailState,
+        ...(route.request().postDataJSON() as Partial<typeof detailState>),
+      };
+    }
+    return route.fulfill(json(detailState));
+  });
   await page.route("**/api/v1/resources/res-0001/logs", (route) =>
     route.fulfill(json(ACTION_LOGS)),
   );

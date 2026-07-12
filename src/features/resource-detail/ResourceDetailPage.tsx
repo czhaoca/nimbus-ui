@@ -23,6 +23,7 @@ import { showToast } from "@/components/Toasts";
 import { useProviders, useResourceAction } from "@/lib/hooks/useApi";
 import { useMe } from "@/lib/hooks/useMe";
 import { getActionLogs, getResource } from "./api";
+import { EditResourceDialog } from "./EditResourceDialog";
 import type { ResourceAction } from "./types";
 import { ActionHistoryPanel } from "./panels/ActionHistoryPanel";
 import { DependenciesPanel } from "./panels/DependenciesPanel";
@@ -85,6 +86,7 @@ export function ResourceDetailPage({ resourceId }: Props) {
   const { isOperator } = useMe();
   const actionMut = useResourceAction();
   const [confirmTerminate, setConfirmTerminate] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
 
   const handleAction = (action: ResourceAction) => {
     actionMut.mutate(
@@ -165,6 +167,16 @@ export function ResourceDetailPage({ resourceId }: Props) {
         {isOperator && (
           <div className="flex flex-col items-end gap-1">
             <div className="flex gap-2">
+              {/* Edit is cosmetically gated like the actions, but unlike them
+                  the engine's PUT /resources routes have no server-side tier
+                  gate yet — czhaoca/nimbus#315 tracks adding it. */}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setEditOpen(true)}
+              >
+                Edit
+              </Button>
               {ACTION_BUTTONS.map((btn) => {
                 if (btn.when && !btn.when.includes(resource.status)) return null;
                 const criticalTerminate =
@@ -211,6 +223,12 @@ export function ResourceDetailPage({ resourceId }: Props) {
       </div>
 
       <ActionHistoryPanel logs={logs} isLoading={logsLoading} error={logsError} />
+
+      <EditResourceDialog
+        resource={resource}
+        open={editOpen}
+        onOpenChange={setEditOpen}
+      />
 
       {/* Terminate confirm (SecurityReviewPage dismiss-dialog pattern). */}
       <AlertDialog open={confirmTerminate} onOpenChange={setConfirmTerminate}>

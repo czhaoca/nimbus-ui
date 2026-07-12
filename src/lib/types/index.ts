@@ -15,6 +15,7 @@ type Schemas = components["schemas"];
 export type Provider = Schemas["ProviderOut"];
 export type ProviderCreate = Schemas["ProviderCreate"];
 export type Resource = Schemas["ResourceOut"];
+export type ResourceUpdate = Schemas["ResourceUpdate"];
 export type SyncResult = Schemas["SyncResult"];
 export type BudgetRule = Schemas["BudgetRuleOut"];
 export type BudgetRuleCreate = Schemas["BudgetRuleCreate"];
