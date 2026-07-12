@@ -18,7 +18,7 @@ export function ProviderCardsWidget({ providerFilter }: { providerFilter: string
   const syncMut = useSyncResources();
 
   const statusMap = useMemo(() => {
-    const m: Record<string, "connected" | "degraded" | "down" | "unknown"> = {};
+    const m: Record<string, string> = {};
     statusData?.providers?.forEach((p) => { m[p.provider_id] = p.status; });
     return m;
   }, [statusData]);

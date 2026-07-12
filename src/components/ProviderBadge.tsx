@@ -12,7 +12,9 @@ interface Props {
   provider: Provider;
   onSync: (id: string) => void;
   syncing: boolean;
-  status?: "connected" | "degraded" | "down" | "unknown";
+  // The contract types resilience status as an open string; unrecognized
+  // values render as-is with the outline variant below.
+  status?: string;
 }
 
 const STATUS_BADGE: Record<string, "default" | "secondary" | "destructive" | "outline"> = {

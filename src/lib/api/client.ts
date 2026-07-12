@@ -1,5 +1,5 @@
 import createClient from "openapi-fetch";
-import type { paths } from "./schema";
+import type { components, paths } from "./schema";
 import type {
   Provider,
   ProviderCreate,
@@ -16,6 +16,9 @@ import type {
   ActionLogEntry,
   RateLimitConfig,
 } from "@/lib/types";
+
+/** Shorthand over the vendored contract components (DEC-4 alias style). */
+type Schemas = components["schemas"];
 
 let _authToken: string | null = null;
 
@@ -40,9 +43,9 @@ api.use({
 
 /**
  * Unwrap an openapi-fetch result into the legacy throw-on-error shape the
- * hooks and pages expect. Response bodies are `unknown` in the generated
- * schema (the engine returns untyped dicts), so callers assert T here —
- * path/method/params stay compile-time checked.
+ * hooks and pages expect. Most response bodies are component-typed in the
+ * vendored schema; T is the matching schema alias there, and a hand
+ * assertion only on the few paths the schema still types as `unknown`.
  */
 export async function unwrap<T>(
   result: Promise<{ data?: unknown; error?: unknown; response: Response }>,
@@ -62,12 +65,8 @@ export const getHealth = async (): Promise<HealthStatus> => {
   return r.json() as Promise<HealthStatus>;
 };
 
-// Auth
-export interface LoginResult {
-  access_token: string;
-  username: string;
-  role: string;
-}
+// Auth — typed engine-side all along (TokenResponse component): alias per DEC-4.
+export type LoginResult = Schemas["TokenResponse"];
 export const login = (username: string, password: string) =>
   unwrap<LoginResult>(
     api.POST("/api/v1/auth/login", { body: { username, password } }),
@@ -76,13 +75,7 @@ export const getMe = () =>
   unwrap<{ username: string; role: string }>(api.GET("/api/v1/auth/me"));
 
 // Users (admin)
-export interface UserOut {
-  id: string;
-  username: string;
-  email: string | null;
-  role: string;
-  is_active: boolean;
-}
+export type UserOut = Schemas["UserOut"];
 export const listUsers = () =>
   unwrap<UserOut[]>(api.GET("/api/v1/auth/users"));
 export const createUser = (data: {
@@ -129,15 +122,7 @@ export const deleteProvider = (id: string) =>
   );
 
 // Provider health (live probe; optionally scoped to one provider)
-export interface ProviderHealthResult {
-  provider_id: string;
-  provider_type: string;
-  display_name: string;
-  status: "connected" | "degraded" | "down" | "error" | "unknown" | "no_adapter" | string;
-  latency_ms: number | null;
-  error: string | null;
-  checked_at: string;
-}
+export type ProviderHealthResult = Schemas["ProviderHealthOut"];
 export const checkProviderHealth = (providerId?: string) =>
   unwrap<ProviderHealthResult[]>(
     api.GET("/api/v1/providers/health/check", {
@@ -146,16 +131,7 @@ export const checkProviderHealth = (providerId?: string) =>
   );
 
 // Per-provider usage quota (resource count + budget utilization)
-export interface ProviderQuota {
-  provider_id: string;
-  resources: { count: number };
-  budget: {
-    monthly_limit: number | null;
-    current_spend: number;
-    utilization: number | null;
-  };
-  warnings: string[];
-}
+export type ProviderQuota = Schemas["ProviderQuotaOut"];
 export const getProviderQuota = (providerId: string) =>
   unwrap<ProviderQuota>(
     api.GET("/api/v1/providers/{provider_id}/quota", {
@@ -219,11 +195,7 @@ export const updateResource = (id: string, body: ResourceUpdate) =>
       body,
     }),
   );
-export interface ResourceDependencies {
-  resource_id: string;
-  depends_on: { id: string; target_id: string; type: string }[];
-  depended_by: { id: string; source_id: string; type: string }[];
-}
+export type ResourceDependencies = Schemas["ResourceDependenciesOut"];
 export const getResourceDependencies = (id: string) =>
   unwrap<ResourceDependencies>(
     api.GET("/api/v1/resources/{resource_id}/dependencies", {
@@ -300,23 +272,8 @@ export const getAuditLogs = (params?: {
   );
 
 // Activity feed (merged audit + webhook events)
-export interface ActivityItem {
-  id: string;
-  type: string;
-  summary: string;
-  timestamp: string | null;
-  source: "audit" | "webhook" | string;
-  details: Record<string, unknown>;
-}
-// /api/v1/activity is untyped in the vendored schema; this DEC-4 shim
-// mirrors activity.py::get_activity_feed — envelope lines 74-79, audit
-// items 29-42, webhook items 51-65 (nimbus-ui#29).
-export interface ActivityFeedResponse {
-  total: number;
-  page: number;
-  per_page: number;
-  items: ActivityItem[];
-}
+export type ActivityItem = Schemas["ActivityItemOut"];
+export type ActivityFeedResponse = Schemas["ActivityFeedOut"];
 
 export const getActivityFeed = (params?: {
   source?: "audit" | "webhook";
@@ -338,8 +295,8 @@ export const updateSetting = (key: string, value: string) =>
     }),
   );
 
-// Rate limits — the schema component IS the full engine shape (2 fields;
-// verified against engine settings.py in nimbus-ui#15): alias per DEC-4.
+// Rate limits — the schema component IS the full contract shape (2 fields;
+// nimbus-ui#15): alias per DEC-4.
 export const getRateLimits = () =>
   unwrap<RateLimitConfig>(api.GET("/api/v1/settings/rate-limits"));
 export const saveRateLimits = (config: RateLimitConfig) =>
@@ -347,22 +304,18 @@ export const saveRateLimits = (config: RateLimitConfig) =>
     api.POST("/api/v1/settings/rate-limits", { body: config }),
   );
 
-// Alert Config — full contract shape (AlertConfigUpdate); a partial PUT
-// would reset the omitted channels to their engine defaults.
-export interface AlertConfigData {
-  webhooks: string[];
-  slack_webhooks: string[];
-  discord_webhooks: string[];
-  email_to: string[];
-  email_from: string;
-  smtp_host: string;
-  smtp_port: number;
-  enabled_channels: string[];
-}
+// Alert Config — the PUT body is always the full shape (AlertConfigUpdate);
+// a partial PUT would reset the omitted channels to their engine defaults.
+export type AlertConfigData = Schemas["AlertConfigOut"];
 export const getAlertConfig = () =>
   unwrap<AlertConfigData>(api.GET("/api/v1/alerts/config"));
-export const updateAlertConfig = (data: AlertConfigData) =>
-  unwrap<AlertConfigData>(api.PUT("/api/v1/alerts/config", { body: data }));
+// The PUT response is the distinct AlertConfigSavedOut: it echoes the config
+// with `email_smtp_host`/`email_smtp_port` (not `smtp_*`) plus `status` — a
+// transcribed engine asymmetry the contract preserves; do not "fix" it here.
+export const updateAlertConfig = (data: Schemas["AlertConfigUpdate"]) =>
+  unwrap<Schemas["AlertConfigSavedOut"]>(
+    api.PUT("/api/v1/alerts/config", { body: data }),
+  );
 export const testAlert = () =>
   unwrap<Record<string, unknown>>(
     api.POST("/api/v1/alerts/test", {
@@ -370,30 +323,18 @@ export const testAlert = () =>
     }),
   );
 
-// Provider resilience status
-export interface ProviderStatus {
-  provider_id: string;
-  provider_type: string;
-  display_name: string;
-  circuit_breaker: { state: string; failure_count: number; failure_threshold: number };
-  recent_errors: number;
-  status: "connected" | "degraded" | "down" | "unknown";
-}
+// Provider resilience status — `circuit_breaker` is an untyped dict in the
+// contract; narrow at the consumer if its fields are ever rendered.
+export type ProviderStatus = Schemas["ProviderResilienceItemOut"];
 export const getProviderStatus = () =>
-  unwrap<{ providers: ProviderStatus[]; total_errors: number }>(
+  unwrap<Schemas["ProviderResilienceOut"]>(
     api.GET("/api/v1/providers/status/resilience"),
   );
 
 // Error log
-export interface ErrorEntry {
-  timestamp: number;
-  source: string;
-  error_type: string;
-  message: string;
-  context: Record<string, unknown>;
-}
+export type ErrorEntry = Schemas["ErrorEntryOut"];
 export const getErrors = (source?: string, limit?: number) =>
-  unwrap<{ errors: ErrorEntry[]; total: number }>(
+  unwrap<Schemas["ErrorLogOut"]>(
     api.GET("/api/v1/errors", {
       params: {
         query: {
@@ -419,14 +360,11 @@ export const listWebhookEvents = <T>(params: WebhookEventsQuery) =>
 // System info
 export const getSystemInfo = <T>() => unwrap<T>(api.GET("/api/v1/system/info"));
 
-// Spending History (for charts)
-export interface SpendingHistoryEntry {
-  date: string;
-  total: number;
-  [provider: string]: string | number;
-}
+// Spending History (for charts) — per-provider spend rides the component's
+// open index signature (extra keys beyond date/total).
+export type SpendingHistoryEntry = Schemas["SpendingHistoryPointOut"];
 export const getSpendingHistory = (days = 30, providerId?: string) =>
-  unwrap<{ period_days: number; data: SpendingHistoryEntry[] }>(
+  unwrap<Schemas["SpendingHistoryOut"]>(
     api.GET("/api/v1/budget/spending-history", {
       params: {
         query: { days, ...(providerId ? { provider_id: providerId } : {}) },
@@ -435,48 +373,28 @@ export const getSpendingHistory = (days = 30, providerId?: string) =>
   );
 
 // Provider Comparison
-export interface ProviderComparisonEntry {
-  provider_id: string;
-  provider_type: string;
-  display_name: string;
-  resource_count: number;
-  monthly_cost_estimate: number;
-  cost_per_resource: number;
-  latest_spending: number;
-  currency: string;
-}
+export type ProviderComparisonEntry = Schemas["ProviderComparisonItemOut"];
 export const getProviderComparison = () =>
-  unwrap<{ providers: ProviderComparisonEntry[] }>(
+  unwrap<Schemas["ProviderComparisonOut"]>(
     api.GET("/api/v1/budget/provider-comparison"),
   );
 
 // Anomalies
-export interface SpendingAnomaly {
-  date: string;
-  amount: number;
-  rolling_avg: number;
-  stddev: number;
-  threshold: number;
-  deviation: number;
-}
+export type SpendingAnomaly = Schemas["SpendingAnomalyOut"];
 export const getSpendingAnomalies = (days = 90, sigma = 2.0) =>
-  unwrap<{ anomalies: SpendingAnomaly[]; count: number }>(
+  unwrap<Schemas["SpendingAnomaliesOut"]>(
     api.GET("/api/v1/budget/anomalies", {
       params: { query: { days, sigma } },
     }),
   );
 
 // Dashboard Preferences
-export interface DashboardWidget {
-  id: string;
-  visible: boolean;
-  order: number;
-}
+export type DashboardWidget = Schemas["DashboardWidgetOut"];
 export const getDashboardPreferences = () =>
-  unwrap<{ widgets: DashboardWidget[] }>(
+  unwrap<Schemas["DashboardPreferencesOut"]>(
     api.GET("/api/v1/dashboard/preferences"),
   );
 export const saveDashboardPreferences = (prefs: { widgets: DashboardWidget[] }) =>
-  unwrap<{ widgets: DashboardWidget[] }>(
+  unwrap<Schemas["DashboardPreferencesOut"]>(
     api.PUT("/api/v1/dashboard/preferences", { body: prefs }),
   );
