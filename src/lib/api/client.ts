@@ -269,6 +269,16 @@ export const getActionLogs = (resourceId: string) =>
     }),
   );
 
+// Resource utilization metrics (#37) — unknown-typed path; the hand-typed
+// response shape lives with its feature (DEC-4 exception, cites the engine
+// serializer there). Type-only import: no runtime edge into features/.
+export const getResourceMetrics = (resourceId: string, hours = 24) =>
+  unwrap<import("@/features/resource-detail/types").ResourceMetrics>(
+    api.GET("/api/v1/resources/{resource_id}/metrics", {
+      params: { path: { resource_id: resourceId }, query: { hours } },
+    }),
+  );
+
 // Audit Log (global)
 export const getAuditLogs = (params?: {
   provider_id?: string;

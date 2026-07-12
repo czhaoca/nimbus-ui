@@ -42,6 +42,14 @@ test.describe("Resource detail smoke", () => {
     await expect(page.getByText("health_check", { exact: true })).toBeVisible();
     await expect(page.getByText("Jun 30, 2026, 2:05 PM UTC")).toBeVisible();
 
+    // Metrics panel (#37): the chart region and its period toggle render
+    // from the deterministic METRICS fixture.
+    await expect(page.getByText("Metrics", { exact: true })).toBeVisible();
+    await expect(page.locator('[data-slot="chart"]')).toBeVisible();
+    await expect(page.getByRole("button", { name: "1h" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "24h" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "7d" })).toBeVisible();
+
     // The harness user is a viewer: the cosmetic operator gate (#36) must
     // render zero action affordances.
     await expect(page.getByRole("button", { name: "Stop" })).toHaveCount(0);

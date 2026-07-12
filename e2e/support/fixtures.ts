@@ -14,6 +14,7 @@ import type {
   SpendingHistoryEntry,
 } from "@/lib/api/client";
 import type { ResourceDependencies } from "@/lib/api/client";
+import type { ResourceMetrics } from "@/features/resource-detail/types";
 import type {
   ActionLogEntry,
   BudgetStatus,
@@ -138,6 +139,21 @@ export const ACTION_LOGS: ActionLogEntry[] = [
     created_at: "2026-06-29T08:00:00Z",
   },
 ];
+
+// #37: deterministic hourly utilization series (SPENDING_HISTORY idiom) —
+// 24 fixed June-2026 points, formula-varied so the lines have visible shape
+// without any randomness.
+export const METRICS: ResourceMetrics = {
+  resource_id: "res-0001",
+  period_hours: 24,
+  data: Array.from({ length: 24 }, (_, i) => ({
+    timestamp: `2026-06-30T${String(i).padStart(2, "0")}:00:00+00:00`,
+    cpu_percent: +(18 + (i % 6) * 9.5).toFixed(1),
+    memory_percent: +(42 + (i % 4) * 6.25).toFixed(2),
+    network_in_bytes: 1024 * (i + 1),
+    network_out_bytes: 512 * (i + 1),
+  })),
+};
 
 // Edge types deliberately avoid "compute"/"vm": those strings already render
 // as resource_type values on the detail page and would break exact-text

@@ -13,6 +13,7 @@ import {
   DASHBOARD_PREFERENCES,
   FIXTURE_USER,
   HEALTH,
+  METRICS,
   PROVIDERS,
   PROVIDER_RESILIENCE,
   RESOURCES,
@@ -64,6 +65,10 @@ export async function mockEngine(page: Page): Promise<void> {
   );
   await page.route("**/api/v1/resources/res-0001/dependencies", (route) =>
     route.fulfill(json(RESOURCE_DEPENDENCIES)),
+  );
+  // Trailing * so the ?hours=N query string still matches (#37).
+  await page.route("**/api/v1/resources/res-0001/metrics*", (route) =>
+    route.fulfill(json(METRICS)),
   );
   await page.route("**/api/v1/budget/status", (route) =>
     route.fulfill(json(BUDGET_STATUSES)),

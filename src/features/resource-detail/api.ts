@@ -4,4 +4,5 @@ export {
   getActionLogs,
   getResource,
   getResourceDependencies,
+  getResourceMetrics,
 } from "@/lib/api/client";

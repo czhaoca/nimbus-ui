@@ -27,6 +27,7 @@ import type { ResourceAction } from "./types";
 import { ActionHistoryPanel } from "./panels/ActionHistoryPanel";
 import { DependenciesPanel } from "./panels/DependenciesPanel";
 import { LifecycleCostPanel } from "./panels/LifecycleCostPanel";
+import { MetricsPanel } from "./panels/MetricsPanel";
 import { PropertiesPanel } from "./panels/PropertiesPanel";
 import { TagsPanel } from "./panels/TagsPanel";
 
@@ -200,6 +201,7 @@ export function ResourceDetailPage({ resourceId }: Props) {
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
           <PropertiesPanel resource={resource} />
+          <MetricsPanel resourceId={resourceId} />
           <DependenciesPanel resourceId={resourceId} />
         </div>
         <div className="space-y-6">

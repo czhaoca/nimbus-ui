@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -9,6 +9,7 @@ const {
   getResourceMock,
   getActionLogsMock,
   getResourceDependenciesMock,
+  getResourceMetricsMock,
   listResourcesMock,
   listProvidersMock,
   getMeMock,
@@ -17,6 +18,7 @@ const {
   getResourceMock: vi.fn(),
   getActionLogsMock: vi.fn(),
   getResourceDependenciesMock: vi.fn(),
+  getResourceMetricsMock: vi.fn(),
   listResourcesMock: vi.fn(),
   listProvidersMock: vi.fn(),
   getMeMock: vi.fn(),
@@ -28,6 +30,7 @@ vi.mock("@/lib/api/client", async (importOriginal) => ({
   getResource: getResourceMock,
   getActionLogs: getActionLogsMock,
   getResourceDependencies: getResourceDependenciesMock,
+  getResourceMetrics: getResourceMetricsMock,
   listResources: listResourcesMock,
   listProviders: listProvidersMock,
   getMe: getMeMock,
@@ -44,6 +47,16 @@ vi.mock("@/components/ProviderIcon", () => ({
 }));
 
 import { ResourceDetailPage } from "../ResourceDetailPage";
+
+// recharts' ResponsiveContainer (inside MetricsPanel) observes its host with
+// ResizeObserver, which jsdom lacks (same local stub as MetricsPanel.test.tsx).
+beforeAll(() => {
+  window.ResizeObserver = class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  } as unknown as typeof ResizeObserver;
+});
 
 const RESOURCE: Resource = {
   id: "res-0001",
@@ -139,6 +152,11 @@ describe("ResourceDetailPage", () => {
     getResourceDependenciesMock.mockResolvedValue(DEPENDENCIES);
     listResourcesMock.mockResolvedValue(NEIGHBORS);
     listProvidersMock.mockResolvedValue(PROVIDERS);
+    getResourceMetricsMock.mockResolvedValue({
+      resource_id: "res-0001",
+      period_hours: 24,
+      data: [],
+    });
     // Default role is viewer — the cosmetic gate must hide all affordances.
     getMeMock.mockResolvedValue({ username: "unit-viewer", role: "viewer" });
     performActionMock.mockResolvedValue({
@@ -163,7 +181,7 @@ describe("ResourceDetailPage", () => {
     expect(screen.queryByText("unit-web-01")).toBeNull();
   });
 
-  it("renders the header and all five panels from fixture data", async () => {
+  it("renders the header and all six panels from fixture data", async () => {
     renderPage();
 
     expect(await screen.findByRole("heading", { name: "unit-web-01" })).toBeTruthy();
@@ -173,6 +191,10 @@ describe("ResourceDetailPage", () => {
 
     expect(screen.getByText("Properties")).toBeTruthy();
     expect(screen.getByText("unit-fixture-instance-0001")).toBeTruthy();
+
+    // Metrics panel (#37) is wired in with its period toggle.
+    expect(screen.getByText("Metrics")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "24h" })).toBeTruthy();
 
     expect(screen.getByText("Lifecycle & Cost")).toBeTruthy();
     expect(screen.getByText("$12.50")).toBeTruthy();
