@@ -14,8 +14,8 @@
     "test:e2e:engine": "playwright test --project=chromium-engine",
     "test:e2e:update": "playwright test --project=chromium-visual --update-snapshots",
     "typecheck": "tsc --noEmit",
-    "sync-contract": "cp ../nimbus/clients/ts/src/schema.d.ts src/lib/api/schema.d.ts",
-    "check-contract": "if [ -f ../nimbus/clients/ts/src/schema.d.ts ]; then diff -q ../nimbus/clients/ts/src/schema.d.ts src/lib/api/schema.d.ts; else echo \"backend checkout absent - vendored schema is authoritative (pinned contract $(node -p 'require(\"./package.json\").nimbusContract'))\"; fi"
+    "sync-contract": "cp ../nimbus/clients/ts/src/schema.d.ts src/lib/api/schema.d.ts && node -e \"const fs=require('fs');const m=fs.readFileSync('src/lib/api/schema.d.ts','utf8').split('\\n')[0].match(/^\\/\\/ nimbus-contract: (.+)$/);if(!m){console.error('sync-contract: copied schema has no contract header - regenerate backend clients (scripts/gen-clients.sh) first');process.exit(1)}const p='./package.json';const d=JSON.parse(fs.readFileSync(p,'utf8'));d.nimbusContract=m[1];fs.writeFileSync(p,JSON.stringify(d,null,2)+'\\n');console.log('sync-contract: vendored schema + pinned nimbusContract '+m[1])\"",
+    "check-contract": "node -e \"const fs=require('fs');const pin=require('./package.json').nimbusContract;const m=fs.readFileSync('src/lib/api/schema.d.ts','utf8').split('\\n')[0].match(/^\\/\\/ nimbus-contract: (.+)$/);if(!m){console.error('check-contract: vendored schema has no contract header - run pnpm sync-contract (or await the backend bot delivery)');process.exit(1)}if(m[1]!==pin){console.error('check-contract: schema header '+m[1]+' != nimbusContract pin '+pin+' - run pnpm sync-contract or fix the pin');process.exit(1)}console.log('check-contract: OK - vendored schema matches pin '+pin)\""
   },
   "dependencies": {
     "@tanstack/react-query": "^5.95.2",
@@ -54,5 +54,5 @@
     "typescript": "^5",
     "vitest": "^4.1.9"
   },
-  "nimbusContract": "1.1.0"
+  "nimbusContract": "1.4.0"
 }

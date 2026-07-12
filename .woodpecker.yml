@@ -12,6 +12,16 @@ steps:
       - corepack enable && corepack prepare pnpm@latest --activate
       - pnpm install --frozen-lockfile
 
+  # Local pin parity (czhaoca/nimbus#305): the vendored schema's first-line header
+  # (`// nimbus-contract: X.Y.Z`, stamped by the backend generator) must
+  # equal package.json's nimbusContract pin. Network-free, no backend
+  # checkout — red means a half-delivered bump or a hand-edited pin.
+  - name: check-contract
+    image: node:22-alpine
+    commands:
+      - corepack enable && corepack prepare pnpm@latest --activate
+      - pnpm check-contract
+
   # Consumer contract gate (ADR-0008 §5): the vendored schema is the pinned
   # contract; the compile is the contract test. Bumps arrive as backend-CI
   # bot commits updating src/lib/api/schema.d.ts + the version stamp.

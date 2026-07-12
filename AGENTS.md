@@ -26,13 +26,17 @@ ports; local `pnpm dev` / compose ports are workstation defaults.
 ## Contract Workflow (ADR-0008)
 
 - The **vendored schema** `src/lib/api/schema.d.ts` (openapi-typescript
-  output) is the contract; it is never hand-edited. `package.json` →
-  `nimbusContract` pins the semver. With a backend checkout at `../nimbus`:
-  `pnpm sync-contract` refreshes it, `pnpm check-contract` exits non-zero on
-  drift (without a checkout it prints that the vendored schema is
-  authoritative and succeeds). Drift is a signal for a deliberate contract
-  bump — a dedicated commit updating schema + pin together — not something to
-  silently re-sync mid-feature.
+  output) is the contract; it is never hand-edited. Its first line is the
+  backend-stamped header `// nimbus-contract: X.Y.Z` (czhaoca/nimbus#304),
+  and `package.json` → `nimbusContract` pins that same semver.
+  `pnpm check-contract` is a **local, checkout-independent** parity check —
+  vendored header vs the pin, exit non-zero on mismatch or missing header —
+  run in CI on every event. `pnpm sync-contract` (needs a backend checkout
+  at `../nimbus`) copies the schema AND re-pins `nimbusContract` from the
+  copied header; bumps normally arrive as backend bot deliveries
+  (czhaoca/nimbus#305) updating schema + pin together. Drift is a signal for
+  a deliberate contract bump — a dedicated commit updating schema + pin
+  together — not something to silently re-sync mid-feature.
 - All requests go through the path-typed openapi-fetch client
   (`src/lib/api/client.ts`). **Only `/api/v1` paths** — the engine's legacy
   unversioned `/api` alias is never referenced. `pnpm typecheck` is the

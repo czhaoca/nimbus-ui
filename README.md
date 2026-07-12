@@ -13,12 +13,15 @@ conventions, privacy rules).
 - Pinned contract version: `package.json` → `nimbusContract` (semver; matches
   the backend's `openapi.json` `info.version`).
 - The generated schema is **vendored** at `src/lib/api/schema.d.ts`
-  (openapi-typescript output) and never hand-edited. With a local backend
-  checkout at `../nimbus`:
-  - `pnpm sync-contract` — refresh the vendored schema from
-    `clients/ts/src/schema.d.ts`.
-  - `pnpm check-contract` — fail if the vendored copy drifts from the backend
-    checkout (absent checkout: the vendored schema is authoritative).
+  (openapi-typescript output) and never hand-edited. Its first line is the
+  backend-stamped `// nimbus-contract: X.Y.Z` header:
+  - `pnpm check-contract` — local and checkout-independent: fail when the
+    vendored schema's header ≠ the `nimbusContract` pin (or the header is
+    missing). Runs in CI on every event.
+  - `pnpm sync-contract` — with a backend checkout at `../nimbus`: copy the
+    schema from `clients/ts/src/schema.d.ts` and re-pin `nimbusContract`
+    from the copied header (bumps normally arrive as backend bot
+    deliveries updating both together).
 - All requests go through the path-typed openapi-fetch client in
   `src/lib/api/client.ts`: paths, methods, and params are compile-checked
   against the vendored schema, so `pnpm typecheck` is the contract test — a
