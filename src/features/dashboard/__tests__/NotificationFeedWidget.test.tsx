@@ -18,6 +18,8 @@ const INCIDENT: WsIncidentEvent = {
   resource_id: "r-1",
   provider_id: "p-1",
   display_name: "vm-web-1",
+  // Always on the wire since #311 (model default) — "" means "none".
+  status: "",
 };
 
 describe("NotificationFeedWidget", () => {
@@ -42,15 +44,19 @@ describe("NotificationFeedWidget", () => {
     expect(screen.queryByText("No incidents this session.")).toBeNull();
   });
 
-  it("falls back to resource_id when display_name is absent", () => {
+  it("falls back to resource_id when display_name is empty", () => {
     render(<NotificationFeedWidget />);
 
+    // Since #311 the key is always on the wire; "" (model default) is the
+    // no-name case the || fallback handles.
     act(() =>
       pushIncident({
         type: "incident",
         action: "health_failure",
         resource_id: "r-9",
         provider_id: "p-1",
+        display_name: "",
+        status: "",
       }),
     );
 

@@ -20,6 +20,9 @@ const incident = (n: number): WsIncidentEvent => ({
   action: "health_failure",
   resource_id: `r-${n}`,
   provider_id: "p-1",
+  // Always on the wire since #311 (model defaults) — "" means "none".
+  display_name: "",
+  status: "",
 });
 
 describe("incident feed store", () => {
