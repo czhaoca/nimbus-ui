@@ -1,15 +1,27 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ProviderIcon, getProviderMeta } from "@/components/ProviderIcon";
 import { StatusBadge } from "@/components/StatusBadge";
 import { showToast } from "@/components/Toasts";
 import { useProviders, useResourceAction } from "@/lib/hooks/useApi";
+import { useMe } from "@/lib/hooks/useMe";
 import { getActionLogs, getResource } from "./api";
 import type { ResourceAction } from "./types";
 import { ActionHistoryPanel } from "./panels/ActionHistoryPanel";
@@ -18,9 +30,8 @@ import { LifecycleCostPanel } from "./panels/LifecycleCostPanel";
 import { PropertiesPanel } from "./panels/PropertiesPanel";
 import { TagsPanel } from "./panels/TagsPanel";
 
-/* Carried over UNCHANGED from the pre-migration inline page (#35): still
-   visible to every role and confirmed via native confirm(). The Sequence-30
-   ticket upgrades these to the house idiom (cosmetic gate + AlertDialog). */
+/* Status-driven action set (#36 house idiom): operator-gated, Terminate
+   confirmed through AlertDialog, critical protection disables Terminate. */
 const ACTION_BUTTONS: {
   action: ResourceAction;
   label: string;
@@ -70,15 +81,16 @@ export function ResourceDetailPage({ resourceId }: Props) {
   });
 
   const { data: providers } = useProviders();
+  const { isOperator } = useMe();
   const actionMut = useResourceAction();
+  const [confirmTerminate, setConfirmTerminate] = useState(false);
 
   const handleAction = (action: ResourceAction) => {
-    if (action === "terminate" && !confirm("Terminate this resource? This cannot be undone.")) {
-      return;
-    }
     actionMut.mutate(
       { id: resourceId, action },
       {
+        // Errors surface the engine's own message (403 tier denials included)
+        // — honest passthrough, never swallowed or rephrased.
         onSuccess: (r) => showToast(`${r.action}: ${r.detail}`, "success"),
         onError: (e) => showToast((e as Error).message, "error"),
       },
@@ -114,6 +126,9 @@ export function ResourceDetailPage({ resourceId }: Props) {
 
   const provider = providers?.find((p) => p.id === resource.provider_id);
   const providerMeta = provider ? getProviderMeta(provider.provider_type) : null;
+  const terminateVisible = ACTION_BUTTONS.some(
+    (b) => b.action === "terminate" && (!b.when || b.when.includes(resource.status)),
+  );
 
   return (
     <div className="space-y-6">
@@ -144,23 +159,41 @@ export function ResourceDetailPage({ resourceId }: Props) {
           </div>
         </div>
 
-        {/* Action buttons (pre-idiom, carried over — see ACTION_BUTTONS note) */}
-        <div className="flex gap-2">
-          {ACTION_BUTTONS.map((btn) => {
-            if (btn.when && !btn.when.includes(resource.status)) return null;
-            return (
-              <Button
-                key={btn.action}
-                variant={btn.variant}
-                size="sm"
-                disabled={actionMut.isPending}
-                onClick={() => handleAction(btn.action)}
-              >
-                {btn.label}
-              </Button>
-            );
-          })}
-        </div>
+        {/* Cosmetic gate only: the engine enforces the operator tier
+            server-side (403) regardless of what the UI renders. */}
+        {isOperator && (
+          <div className="flex flex-col items-end gap-1">
+            <div className="flex gap-2">
+              {ACTION_BUTTONS.map((btn) => {
+                if (btn.when && !btn.when.includes(resource.status)) return null;
+                const criticalTerminate =
+                  btn.action === "terminate" &&
+                  resource.protection_level === "critical";
+                return (
+                  <Button
+                    key={btn.action}
+                    variant={btn.variant}
+                    size="sm"
+                    disabled={actionMut.isPending || criticalTerminate}
+                    onClick={() =>
+                      btn.action === "terminate"
+                        ? setConfirmTerminate(true)
+                        : handleAction(btn.action)
+                    }
+                  >
+                    {btn.label}
+                  </Button>
+                );
+              })}
+            </div>
+            {terminateVisible && resource.protection_level === "critical" && (
+              <p className="text-xs text-muted-foreground">
+                Terminate is disabled: critical protection — the engine
+                refuses critical terminates.
+              </p>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Single-scroll two-column layout (epic decision) */}
@@ -176,6 +209,30 @@ export function ResourceDetailPage({ resourceId }: Props) {
       </div>
 
       <ActionHistoryPanel logs={logs} isLoading={logsLoading} error={logsError} />
+
+      {/* Terminate confirm (SecurityReviewPage dismiss-dialog pattern). */}
+      <AlertDialog open={confirmTerminate} onOpenChange={setConfirmTerminate}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Terminate {resource.display_name || resource.external_id}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Permanently terminates this resource at the provider. This
+              cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={actionMut.isPending}
+              onClick={() => handleAction("terminate")}
+            >
+              Confirm terminate
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

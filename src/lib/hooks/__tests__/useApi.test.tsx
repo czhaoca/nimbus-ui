@@ -139,7 +139,7 @@ describe("useApi hooks", () => {
   });
 
   describe("mutation cache invalidation", () => {
-    it("useResourceAction POSTs the action and invalidates exactly [resources]", async () => {
+    it("useResourceAction POSTs the action and invalidates resources plus the detail keys", async () => {
       const fetchMock = mockFetch(200, {
         success: true,
         resource_id: "r-1",
@@ -155,7 +155,12 @@ describe("useApi hooks", () => {
       expect(new URL(req.url).pathname).toBe("/api/v1/resources/r-1/action");
       expect(req.method).toBe("POST");
       await expect(req.json()).resolves.toEqual({ action: "stop" });
-      expect(invalidatedKeys()).toEqual([["resources"]]);
+      // #36: an open detail page must refetch itself after an action.
+      expect(invalidatedKeys()).toEqual([
+        ["resources"],
+        ["resource", "r-1"],
+        ["action-logs", "r-1"],
+      ]);
     });
 
     it("useSyncResources POSTs the provider sync and invalidates exactly [resources]", async () => {

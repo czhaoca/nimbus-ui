@@ -24,6 +24,10 @@ import type {
 
 export const FIXTURE_USER = { username: "e2e-viewer", role: "viewer" };
 
+// #36: operator variant for action-affordance smoke — specs re-route
+// /api/v1/auth/me over the harness's viewer stub (last-registered wins).
+export const OPERATOR_USER = { username: "e2e-operator", role: "operator" };
+
 export const HEALTH: HealthStatus = {
   status: "ok",
   app: "nimbus",

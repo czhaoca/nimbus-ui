@@ -23,7 +23,12 @@ export function useResourceAction() {
   return useMutation({
     mutationFn: ({ id, action }: { id: string; action: ResourceAction }) =>
       api.performAction(id, action),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["resources"] }),
+    onSuccess: (_result, { id }) => {
+      qc.invalidateQueries({ queryKey: ["resources"] });
+      // #36: an open detail page refetches its own keys after an action.
+      qc.invalidateQueries({ queryKey: ["resource", id] });
+      qc.invalidateQueries({ queryKey: ["action-logs", id] });
+    },
   });
 }
 

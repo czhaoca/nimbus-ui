@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { Provider, Resource, ActionLogEntry } from "@/lib/types";
 import type { ResourceDependencies } from "@/lib/api/client";
@@ -10,12 +11,16 @@ const {
   getResourceDependenciesMock,
   listResourcesMock,
   listProvidersMock,
+  getMeMock,
+  performActionMock,
 } = vi.hoisted(() => ({
   getResourceMock: vi.fn(),
   getActionLogsMock: vi.fn(),
   getResourceDependenciesMock: vi.fn(),
   listResourcesMock: vi.fn(),
   listProvidersMock: vi.fn(),
+  getMeMock: vi.fn(),
+  performActionMock: vi.fn(),
 }));
 
 vi.mock("@/lib/api/client", async (importOriginal) => ({
@@ -25,6 +30,8 @@ vi.mock("@/lib/api/client", async (importOriginal) => ({
   getResourceDependencies: getResourceDependenciesMock,
   listResources: listResourcesMock,
   listProviders: listProvidersMock,
+  getMe: getMeMock,
+  performAction: performActionMock,
 }));
 
 // ProviderIcon imports raw .svg as components via @svgr/webpack — a
@@ -132,6 +139,14 @@ describe("ResourceDetailPage", () => {
     getResourceDependenciesMock.mockResolvedValue(DEPENDENCIES);
     listResourcesMock.mockResolvedValue(NEIGHBORS);
     listProvidersMock.mockResolvedValue(PROVIDERS);
+    // Default role is viewer — the cosmetic gate must hide all affordances.
+    getMeMock.mockResolvedValue({ username: "unit-viewer", role: "viewer" });
+    performActionMock.mockResolvedValue({
+      success: true,
+      resource_id: "res-0001",
+      action: "terminate",
+      detail: "requested",
+    });
   });
 
   afterEach(() => {
@@ -226,14 +241,54 @@ describe("ResourceDetailPage", () => {
     expect(back.closest("a")?.getAttribute("href")).toBe("/");
   });
 
-  it("carries the pre-idiom action buttons over unchanged (upgrade is Sequence 30)", async () => {
+  it("renders no action affordances for viewers (cosmetic gate)", async () => {
+    renderPage();
+    await screen.findByRole("heading", { name: "unit-web-01" });
+    // Let the auth-me query settle so this can't pass on a pending gate.
+    await screen.findByText("health_check");
+
+    expect(screen.queryByRole("button", { name: "Stop" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Health Check" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Terminate" })).toBeNull();
+  });
+
+  it("renders the status-driven action bar for operators", async () => {
+    getMeMock.mockResolvedValue({ username: "unit-admin", role: "operator" });
     renderPage();
     await screen.findByRole("heading", { name: "unit-web-01" });
 
     // status=running → Stop, Health Check, Terminate; Start only when stopped.
-    expect(screen.getByRole("button", { name: "Stop" })).toBeTruthy();
+    expect(await screen.findByRole("button", { name: "Stop" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Health Check" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Terminate" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Start" })).toBeNull();
+  });
+
+  it("confirms Terminate only through the AlertDialog", async () => {
+    getMeMock.mockResolvedValue({ username: "unit-admin", role: "operator" });
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(await screen.findByRole("button", { name: "Terminate" }));
+    // Opening the dialog must not fire the mutation.
+    expect(await screen.findByText(/This cannot be undone/)).toBeTruthy();
+    expect(performActionMock).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: "Confirm terminate" }));
+    expect(performActionMock).toHaveBeenCalledWith("res-0001", "terminate");
+  });
+
+  it("disables Terminate with a visible reason on critical protection", async () => {
+    getMeMock.mockResolvedValue({ username: "unit-admin", role: "operator" });
+    getResourceMock.mockResolvedValue({
+      ...RESOURCE,
+      protection_level: "critical",
+    });
+    renderPage();
+
+    const terminate = await screen.findByRole("button", { name: "Terminate" });
+    expect((terminate as HTMLButtonElement).disabled).toBe(true);
+    // The engine 403s critical terminates — surface why, don't swallow a 4xx.
+    expect(screen.getByText(/critical protection/i)).toBeTruthy();
   });
 });

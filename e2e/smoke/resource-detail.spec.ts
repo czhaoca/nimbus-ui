@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 
+import { OPERATOR_USER } from "../support/fixtures";
 import { mockEngine } from "../support/harness";
 
 // Detail-page smoke (#35) — DOM asserts on concrete fixture values, same
@@ -40,6 +41,34 @@ test.describe("Resource detail smoke", () => {
     // Action history renders the fixture rows (UTC-pinned formatter).
     await expect(page.getByText("health_check", { exact: true })).toBeVisible();
     await expect(page.getByText("Jun 30, 2026, 2:05 PM UTC")).toBeVisible();
+
+    // The harness user is a viewer: the cosmetic operator gate (#36) must
+    // render zero action affordances.
+    await expect(page.getByRole("button", { name: "Stop" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Health Check" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Terminate" })).toHaveCount(0);
+  });
+
+  test("operators see the status-driven action affordances", async ({
+    page,
+  }) => {
+    // Routes match last-registered-first: this override wins over the
+    // harness's viewer stub (auth-gate.spec.ts precedent).
+    await page.route("**/api/v1/auth/me", (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(OPERATOR_USER),
+      }),
+    );
+    await page.goto("/resources/res-0001");
+
+    await expect(page.getByRole("heading", { name: "demo-web-01" })).toBeVisible();
+    // running fixture → Stop / Health Check / Terminate, never Start.
+    await expect(page.getByRole("button", { name: "Stop" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Health Check" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Terminate" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Start" })).toHaveCount(0);
   });
 
   test("the dependencies sub-route redirects to the detail anchor", async ({
