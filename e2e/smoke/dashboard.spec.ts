@@ -53,7 +53,7 @@ test.describe("Dashboard smoke", () => {
   test("renders the honest notifications empty state", async ({ page }) => {
     await expect(
       page.getByText(
-        "Live incidents since page load — the engine keeps no notification history.",
+        "Live incidents since page load — the engine's persisted notification feed is not wired into this widget yet.",
       ),
     ).toBeVisible();
     await expect(page.getByText("No incidents this session.")).toBeVisible();
